@@ -1,2 +1,2 @@
-// Person 5: SQS assignment worker Lambda
+// stub: Person 5 assignment worker Lambda
 module.exports = {};

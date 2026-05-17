@@ -1,2 +1,2 @@
-// Person 4: S3 presigned URLs and delete helpers
+// stub: Person 4 S3 presigned URLs and delete helpers
 module.exports = {};

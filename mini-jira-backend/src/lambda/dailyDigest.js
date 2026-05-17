@@ -1,2 +1,2 @@
-// Person 5: EventBridge daily digest Lambda
+// stub: Person 5 daily digest Lambda
 module.exports = {};
