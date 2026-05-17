@@ -69,6 +69,15 @@ module.exports = async function authMiddleware(req, res, next) {
     next();
   } catch (err) {
     console.error('Auth error:', err);
-    return res.status(401).json({ error: 'Invalid or expired token' });
+    if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+    if (err.name === 'UnrecognizedClientException' || err.name === 'InvalidSignatureException') {
+      return res.status(500).json({ error: 'AWS credentials in .env are invalid' });
+    }
+    if (!err.message?.includes('User not found')) {
+      return res.status(500).json({ error: err.message || 'Authentication failed' });
+    }
+    return res.status(401).json({ error: 'User not found in DynamoDB' });
   }
 };
