@@ -36,8 +36,17 @@ module.exports = async function authMiddleware(req, res, next) {
 
     const token = authHeader.split(' ')[1];
 
+    const issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
+    const verifyOptions = {
+      algorithms: ['RS256'],
+      issuer
+    };
+    if (process.env.COGNITO_CLIENT_ID) {
+      verifyOptions.audience = process.env.COGNITO_CLIENT_ID;
+    }
+
     const decoded = await new Promise((resolve, reject) => {
-      jwt.verify(token, getKey, { algorithms: ['RS256'] }, (err, payload) => {
+      jwt.verify(token, getKey, verifyOptions, (err, payload) => {
         if (err) return reject(err);
         resolve(payload);
       });

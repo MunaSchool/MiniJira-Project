@@ -1,6 +1,6 @@
 # Mini-Jira client
 
-React + Vite placeholder. frontend TBD.
+React + Vite scaffold. UI work comes later.
 
 ```bash
 npm install
