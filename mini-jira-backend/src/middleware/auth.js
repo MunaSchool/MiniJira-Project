@@ -27,7 +27,23 @@ async function getUserFromDb(sub) {
   return result.Item;
 }
 
-module.exports = async function authMiddleware(req, res, next) {
+function requireRole(allowedRoles) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({
+        error: `Access denied. Required role: ${allowedRoles.join(' or ')}. Your role: ${req.user.role}`
+      });
+    }
+
+    next();
+  };
+}
+
+async function authMiddleware(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -60,6 +76,7 @@ module.exports = async function authMiddleware(req, res, next) {
     }
 
     req.user = {
+      sub,
       userId: sub,
       email: user.email,
       role: user.role,
@@ -80,4 +97,8 @@ module.exports = async function authMiddleware(req, res, next) {
     }
     return res.status(401).json({ error: 'User not found in DynamoDB' });
   }
-};
+}
+
+module.exports = authMiddleware;
+module.exports.authMiddleware = authMiddleware;
+module.exports.requireRole = requireRole;
