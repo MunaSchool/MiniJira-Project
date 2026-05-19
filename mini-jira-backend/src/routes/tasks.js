@@ -1,24 +1,12 @@
 const express = require('express');
 const router = express.Router();
+const taskController = require('../controllers/taskcontroller');
+const { authMiddleware, requireRole } = require('../middleware/auth');
 
-router.post('/', (req, res) => {
-  res.status(501).json({ error: 'Not implemented yet (Person 2)' });
-});
-
-router.get('/', (req, res) => {
-  res.status(501).json({ error: 'Not implemented yet (Person 2)' });
-});
-
-router.get('/:id', (req, res) => {
-  res.status(501).json({ error: 'Not implemented yet (Person 2)' });
-});
-
-router.put('/:id', (req, res) => {
-  res.status(501).json({ error: 'Not implemented yet (Person 2)' });
-});
-
-router.delete('/:id', (req, res) => {
-  res.status(501).json({ error: 'Not implemented yet (Person 2)' });
-});
+router.post('/', authMiddleware, requireRole(['Manager']), taskController.createTask);
+router.get('/', authMiddleware, taskController.getTasks);
+router.get('/:id', authMiddleware, taskController.getTaskById);
+router.put('/:id', authMiddleware, taskController.updateTask);
+router.delete('/:id', authMiddleware, requireRole(['Manager']), taskController.deleteTask);
 
 module.exports = router;
