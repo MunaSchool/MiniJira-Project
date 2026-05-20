@@ -1,4 +1,5 @@
 const TaskModel = require('../models/tasksModel');
+const snsService = require('../services/sns');
 
 // Helper: Check if user can access a task
 async function canAccessTask(taskId, user) {
@@ -22,7 +23,12 @@ exports.createTask = async (req, res) => {
     }, req.user.sub);
     
     // TODO: Trigger SNS for assignment (Person 5)
-    // await snsService.publishAssignment(task);
+    // await snsService.publishAssignment(task); //Done here
+    try {
+      await snsService.publishTaskAssignment(task, req.user.sub || req.user.userId);
+    } catch (snsError) {
+      console.error('SNS publish failed, but task was created:', snsError);
+    }
     
     res.status(201).json(task);
   } catch (error) {
