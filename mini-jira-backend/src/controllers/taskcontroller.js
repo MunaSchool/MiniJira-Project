@@ -1,3 +1,7 @@
+//ana
+const CLOUDFRONT_URL = process.env.CLOUDFRONT_URL ||
+  "https://d2tb1dxlwmny4q.cloudfront.net";
+
 const TaskModel = require('../models/tasksModel');
 
 // Helper: Check if user can access a task
@@ -24,7 +28,21 @@ exports.createTask = async (req, res) => {
     // TODO: Trigger SNS for assignment (Person 5)
     // await snsService.publishAssignment(task);
     
-    res.status(201).json(task);
+    //res.status(201).json(task);
+    // ana replaced res.status(201).json(task); with
+    
+      const taskWithImages = {
+        ...task,
+        imageUrl: task.imageKey
+          ? `${CLOUDFRONT_URL}/${task.imageKey}`
+          : null,
+        resizedImageUrl: task.imageKey
+          ? `${CLOUDFRONT_URL}/resized-${task.imageKey}`
+          : null
+};
+
+res.status(201).json(taskWithImages);
+
   } catch (error) {
     console.error('Create task error:', error);
     res.status(500).json({ error: 'Failed to create task' });
@@ -63,7 +81,21 @@ exports.getTasks = async (req, res) => {
       });
     }
     
-    res.json({ tasks, count: tasks.length });
+    //res.json({ tasks, count: tasks.length });
+    // ana
+    const tasksWithImages = tasks.map(task => ({
+      ...task,
+      imageUrl: task.imageKey
+          ? `${CLOUDFRONT_URL}/${task.imageKey}`
+          : null,
+      resizedImageUrl: task.imageKey
+        ? `${CLOUDFRONT_URL}/resized-${task.imageKey}`
+        : null
+}));
+// lhd hena
+res.json({ tasks: tasksWithImages, count: tasks.length });
+
+
   } catch (error) {
     console.error('Get tasks error:', error);
     res.status(500).json({ error: 'Failed to fetch tasks' });
@@ -77,7 +109,20 @@ exports.getTaskById = async (req, res) => {
     if (!task) return res.status(404).json({ error: 'Task not found' });
     if (!allowed) return res.status(403).json({ error: 'Access denied - task belongs to different team' });
     
-    res.json(task);
+    //res.json(task);
+    // ana
+      
+      const taskWithImages = {
+        ...task,
+        imageUrl: task.imageKey
+          ? `${CLOUDFRONT_URL}/${task.imageKey}`
+          : null,
+        resizedImageUrl: task.imageKey
+          ? `${CLOUDFRONT_URL}/resized-${task.imageKey}`
+          : null
+};
+res.json(taskWithImages);
+
   } catch (error) {
     console.error('Get task error:', error);
     res.status(500).json({ error: 'Failed to fetch task' });
@@ -112,6 +157,19 @@ exports.updateTask = async (req, res) => {
     } else {
       // Manager: can update any field
       updates = { ...req.body };
+
+      // If manager replaces task image, keep old + new image keys
+    if (req.body.imageKey && req.body.imageKey !== existingTask.imageKey) {
+    const oldHistory = existingTask.imageHistory || [];
+
+    updates.imageHistory = [
+      ...new Set([
+        ...oldHistory,
+        existingTask.imageKey,
+        req.body.imageKey
+      ].filter(Boolean))
+    ];
+  }
       
       // Log status change if status changed
       if (updates.status && existingTask.status !== updates.status) {
@@ -138,9 +196,31 @@ exports.deleteTask = async (req, res) => {
     if (req.user.role !== 'Manager') {
       return res.status(403).json({ error: 'Only managers can delete tasks' });
     }
-    
+
+    //importing S3 helpers
+    const { deleteImage, deleteResizedImage } = require('../services/s3');
+
+    // deleting from DB FIRST (we still have the old task object)
     const deletedTask = await TaskModel.delete(req.params.id);
-    res.json({ message: 'Task deleted successfully', task: deletedTask });
+
+    // deleting all images linked to this task from S3
+    const imageKeys = [
+      ...(deletedTask?.imageHistory || []),
+      deletedTask?.imageKey
+    ].filter(Boolean);
+
+    const uniqueImageKeys = [...new Set(imageKeys)];
+
+    for (const key of uniqueImageKeys) {
+      await deleteImage(key);
+      await deleteResizedImage(key);
+    }
+
+    res.json({ 
+      message: 'Task deleted successfully', 
+      task: deletedTask 
+    });
+
   } catch (error) {
     console.error('Delete task error:', error);
     res.status(500).json({ error: 'Failed to delete task' });
