@@ -17,12 +17,12 @@ const canAccessTask = async (taskId, user) => {
 exports.getCommentsByTaskId = async (req, res) => {
   try {
     const { taskId } = req.params;
-    const { user } = req;   // from your auth middleware (contains role, teamId, userId)
+    const { user } = req;
 
-    // First, verify the user has permission to see this task
+    //verify user has permission to see task
     const authorized = await canAccessTask(taskId, user);
     if (!authorized) {
-      return res.status(403).json({ error: 'Access denied – you cannot view comments for this task' });
+      return res.status(403).json({ error: 'Access denied :( you cannot view comments for this task' });
     }
 
     const comments = await commentModel.findByTaskId(taskId);
@@ -47,16 +47,15 @@ exports.createComment = async (req, res) => {
     // Verify the user has permission to comment on this task
     const authorized = await canAccessTask(taskId, user);
     if (!authorized) {
-      return res.status(403).json({ error: 'Access denied – you cannot comment on this task' });
+      return res.status(403).json({ error: 'Access denied :( you cannot comment on this task' });
     }
 
     // Create comment – the model will likely generate commentId, createdAt, authorId
     const comment = await commentModel.create({
       taskId,
       text,
-      authorId: user.userId,   // or user.sub – depends on your middleware
-    }, user.sub);               // keep your existing signature if needed
-
+      authorId: user.userId,
+    }, user.sub);          
     res.status(201).json(comment);
   } catch (error) {
     console.error('Create comment error:', error);
