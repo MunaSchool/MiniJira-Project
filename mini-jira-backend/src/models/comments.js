@@ -30,3 +30,5 @@ class CommentModel {
       return comment;
     }
   }
+
+  module.exports = CommentModel;

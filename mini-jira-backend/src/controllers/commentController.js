@@ -1,5 +1,5 @@
-const commentModel = require('../models/commentModel');
-const taskModel = require('../models/taskModel'); 
+const commentModel = require('../models/comments');
+const taskModel = require('../models/tasksModel');
 
 // Helper: check if user is manager
 const isManager = (user) => user && user.role === 'Manager';

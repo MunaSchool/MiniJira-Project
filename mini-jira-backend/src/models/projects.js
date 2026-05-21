@@ -37,3 +37,5 @@ class ProjectModel {
     return project;
   }
 }
+
+module.exports = ProjectModel;
