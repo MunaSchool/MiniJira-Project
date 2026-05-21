@@ -17,10 +17,12 @@ class ProjectModel {
     const project = {
       projectId,
       ...projectData,
-      //name: projectData.name,
-      //description: projectData.description,
-      //teamId: projectData.teamId,
-      //managerId: projectData.managerId,
+      //improv 
+      name: projectData.name,
+      description: projectData.description,
+      teamId: projectData.teamId,
+      managerId: projectData.managerId,
+      deadline: projectData.deadline,
       createdAt: now,
       updatedAt: now,
       createdBy: userId,

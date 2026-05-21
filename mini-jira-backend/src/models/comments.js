@@ -17,8 +17,8 @@ class CommentModel {
       const comment = {
         commentId,
         ...commentData,
-        //taskId: commentData.taskId,
-        //text,
+        taskId: commentData.taskId,
+        text: commentData.text,
         createdAt: now,
         updatedAt: now,
         createdBy: userId,
