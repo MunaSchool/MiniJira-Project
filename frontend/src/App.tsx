@@ -1,9 +1,9 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { LoginPage } from '@/pages/LoginPage';
 import { Callback } from '@/pages/Callback';
-import KanbanBoard from '@/components/tasks/KanbanBoard';
+import { KanbanBoard } from '@/components/tasks/KanbanBoard';  
 import { Toaster } from 'sonner';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
 function AppContent() {
   const { user, loading } = useAuth();
