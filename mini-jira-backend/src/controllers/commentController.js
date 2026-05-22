@@ -19,9 +19,12 @@ exports.getCommentsByTaskId = async (req, res) => {
     const { taskId } = req.params;
     const { user } = req;
 
-    //verify user has permission to see task
-    const authorized = await canAccessTask(taskId, user);
-    if (!authorized) {
+      const task = await canAccessTask(taskId, user);
+    if (!task) {
+      const actualTask = await taskModel.findById(taskId);
+      if (!actualTask) {
+        return res.status(404).json({ error: 'Task not found' });
+      }
       return res.status(403).json({ error: 'Access denied :( you cannot view comments for this task' });
     }
 
@@ -45,8 +48,12 @@ exports.createComment = async (req, res) => {
     }
 
     // Verify the user has permission to comment on this task
-    const authorized = await canAccessTask(taskId, user);
-    if (!authorized) {
+    const task = await canAccessTask(taskId, user);
+    if (!task) {
+      const actualTask = await taskModel.findById(taskId);
+      if (!actualTask) {
+        return res.status(404).json({ error: 'Task not found' });
+      }
       return res.status(403).json({ error: 'Access denied :( you cannot comment on this task' });
     }
 
