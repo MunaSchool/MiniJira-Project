@@ -1,9 +1,10 @@
 import {
   CognitoIdentityProviderClient,
-  InitiateAuthCommand
+  InitiateAuthCommand,
+  SignUpCommand
 } from '@aws-sdk/client-cognito-identity-provider';
 import axios from 'axios';
-import type { LoginCredentials, LoginResponse } from '@/types/auth';
+import type { LoginCredentials, LoginResponse, SignupPayload, SignupResponse } from '@/types/auth';
 import { decodeJwtPayload } from '@/lib/jwt-decode';
 import { api } from './api';
 
@@ -129,4 +130,33 @@ export async function loginWithCognito(credentials: LoginCredentials): Promise<L
 
 export function isCognitoConfigured(): boolean {
   return Boolean(import.meta.env.VITE_COGNITO_CLIENT_ID);
+}
+
+export async function registerWithCognito(payload: SignupPayload): Promise<SignupResponse> {
+  const config = getCognitoConfig();
+  if (!config) {
+    throw new Error('Cognito is not configured. Set VITE_COGNITO_CLIENT_ID in frontend/.env');
+  }
+
+  const client = new CognitoIdentityProviderClient({ region: config.region });
+
+  try {
+    await client.send(
+      new SignUpCommand({
+        ClientId: config.clientId,
+        Username: payload.email.trim(),
+        Password: payload.password,
+        UserAttributes: [
+          { Name: 'email', Value: payload.email.trim() },
+          { Name: 'name', Value: payload.name.trim() }
+        ]
+      })
+    );
+
+    return {
+      message: 'Cognito sign-up completed. Check your email to confirm your account.'
+    };
+  } catch (error) {
+    throw mapCognitoError(error);
+  }
 }

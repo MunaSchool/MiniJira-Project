@@ -1,4 +1,4 @@
-import { Terminal } from 'lucide-react';
+import { Github, Terminal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 
@@ -13,20 +13,46 @@ function GoogleIcon() {
   );
 }
 
-export function SocialLogin() {
+interface SocialLoginProps {
+  mode?: 'login' | 'signup';
+}
+
+export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
   const notify = (provider: string) =>
     toast({ title: `${provider} sign-in`, description: 'Available when Cognito federation is configured.' });
 
   return (
     <div className="grid grid-cols-2 gap-3">
-      <Button type="button" variant="outline" className="h-11 bg-white font-medium" onClick={() => notify('Google')}>
+      <Button
+        type="button"
+        variant="outline"
+        className="h-11 bg-background font-medium"
+        onClick={() => notify('Google')}
+      >
         <GoogleIcon />
         Google
       </Button>
-      <Button type="button" variant="outline" className="h-11 bg-white font-medium" onClick={() => notify('SSO')}>
-        <Terminal className="h-4 w-4 text-muted-foreground" />
-        SSO
-      </Button>
+      {mode === 'signup' ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="h-11 bg-background font-medium"
+          onClick={() => notify('GitHub')}
+        >
+          <Github className="h-4 w-4 text-muted-foreground" />
+          GitHub
+        </Button>
+      ) : (
+        <Button
+          type="button"
+          variant="outline"
+          className="h-11 bg-background font-medium"
+          onClick={() => notify('SSO')}
+        >
+          <Terminal className="h-4 w-4 text-muted-foreground" />
+          SSO
+        </Button>
+      )}
     </div>
   );
 }

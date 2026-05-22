@@ -1,26 +1,30 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  darkMode: ['class'],
+  darkMode: ['class', '[data-theme="dark"]'],
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
-        border: '#c7c4d8',
-        background: '#f8f9ff',
-        foreground: '#0b1c30',
+        border: 'var(--border)',
+        background: 'var(--background)',
+        foreground: 'var(--foreground)',
         primary: {
-          DEFAULT: '#4f46e5',
-          dark: '#3525cd',
-          foreground: '#ffffff'
+          DEFAULT: 'var(--primary)',
+          dark: 'var(--primary-dark)',
+          foreground: 'var(--primary-foreground)'
         },
         secondary: {
-          DEFAULT: '#dce9ff',
-          foreground: '#464555',
-          muted: '#eff4ff'
+          DEFAULT: 'var(--secondary)',
+          foreground: 'var(--secondary-foreground)',
+          muted: 'var(--secondary-muted)'
         },
         muted: {
-          DEFAULT: '#eff4ff',
-          foreground: '#464555'
+          DEFAULT: 'var(--muted)',
+          foreground: 'var(--muted-foreground)'
+        },
+        accent: {
+          DEFAULT: 'var(--accent)',
+          foreground: 'var(--accent-foreground)'
         }
       },
       fontFamily: {
@@ -28,9 +32,9 @@ export default {
         label: ['Inter', 'system-ui', 'sans-serif']
       },
       boxShadow: {
-        card: '0 4px 24px rgba(79, 70, 229, 0.08), 0 1px 3px rgba(11, 28, 48, 0.06)',
-        'card-hover': '0 12px 40px rgba(79, 70, 229, 0.14), 0 4px 12px rgba(11, 28, 48, 0.08)',
-        glow: '0 0 24px rgba(79, 70, 229, 0.35)'
+        card: 'var(--shadow-card)',
+        'card-hover': 'var(--shadow-card-hover)',
+        glow: '0 0 26px rgba(28, 46, 74, 0.35)'
       },
       keyframes: {
         'fade-in': {

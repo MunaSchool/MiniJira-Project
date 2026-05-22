@@ -12,11 +12,26 @@ export interface LoginCredentials {
   password: string;
 }
 
+export interface SignupPayload {
+  name: string;
+  email: string;
+  organizationName: string;
+  password: string;
+}
+
 export interface LoginResponse {
   token: string;
   role: string;
   teamId: string | null;
   user: AuthUser;
+}
+
+export interface SignupResponse {
+  token?: string;
+  role?: string;
+  teamId?: string | null;
+  user?: AuthUser;
+  message?: string;
 }
 
 export interface AuthSession {

@@ -27,7 +27,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <p className="max-w-md text-sm text-muted-foreground">{this.state.error.message}</p>
           <button
             type="button"
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white"
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
             onClick={() => window.location.reload()}
           >
             Reload page

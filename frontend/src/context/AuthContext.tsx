@@ -15,6 +15,8 @@ export interface AuthContextValue {
   isAuthenticated: boolean;
   isInitializing: boolean;
   login: (credentials: LoginCredentials, rememberDevice: boolean) => Promise<AuthSession>;
+  applySession: (session: AuthSession) => void;
+  updateSessionUser: (user: AuthSession['user']) => void;
   logout: () => void;
 }
 
@@ -29,19 +31,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsInitializing(false);
   }, []);
 
-  const login = useCallback(async (credentials: LoginCredentials, rememberDevice: boolean) => {
-    const response = await loginRequest(credentials);
-    const nextSession: AuthSession = {
-      token: response.token,
-      role: response.role,
-      teamId: response.teamId,
-      user: response.user,
-      rememberDevice
-    };
+  const applySession = useCallback((nextSession: AuthSession) => {
     persistSession(nextSession);
     setSession(nextSession);
-    return nextSession;
   }, []);
+
+  const updateSessionUser = useCallback(
+    (user: AuthSession['user']) => {
+      setSession((prev) => {
+        if (!prev) return prev;
+        const nextSession = { ...prev, user: { ...prev.user, ...user } };
+        persistSession(nextSession);
+        return nextSession;
+      });
+    },
+    []
+  );
+
+  const login = useCallback(
+    async (credentials: LoginCredentials, rememberDevice: boolean) => {
+      const response = await loginRequest(credentials);
+      const nextSession: AuthSession = {
+        token: response.token,
+        role: response.role,
+        teamId: response.teamId,
+        user: response.user,
+        rememberDevice
+      };
+      applySession(nextSession);
+      return nextSession;
+    },
+    [applySession]
+  );
 
   const logout = useCallback(() => {
     clearSession();
@@ -54,9 +75,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: Boolean(session?.token),
       isInitializing,
       login,
+      applySession,
+      updateSessionUser,
       logout
     }),
-    [session, isInitializing, login, logout]
+    [session, isInitializing, login, applySession, updateSessionUser, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

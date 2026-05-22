@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { LoginCredentials, LoginResponse } from '@/types/auth';
+import type { LoginCredentials, LoginResponse, SignupPayload, SignupResponse } from '@/types/auth';
 import { api } from './api';
 
 function isCognitoConfigured(): boolean {
@@ -18,8 +18,10 @@ export async function login(credentials: LoginCredentials): Promise<LoginRespons
   } catch (error) {
     if (axios.isAxiosError(error)) {
       const status = error.response?.status;
+      const shouldFallback =
+        status === 404 || status === 501 || status === 500 || (status && status >= 500) || !status;
 
-      if (status === 404 || status === 501) {
+      if (shouldFallback) {
         if (!isCognitoConfigured()) {
           throw new Error(
             'Login endpoint unavailable. Set VITE_COGNITO_* in frontend/.env for Cognito auth.'
@@ -35,6 +37,42 @@ export async function login(credentials: LoginCredentials): Promise<LoginRespons
 
       const message = (error.response?.data as { error?: string })?.error || error.message;
       throw new Error(message || 'Authentication failed');
+    }
+    throw error;
+  }
+}
+
+export async function register(payload: SignupPayload): Promise<SignupResponse> {
+  try {
+    const { data } = await api.post<SignupResponse>('/auth/register', {
+      name: payload.name.trim(),
+      email: payload.email.trim(),
+      organizationName: payload.organizationName.trim(),
+      password: payload.password
+    });
+    return data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status;
+      const shouldFallback =
+        status === 404 || status === 501 || status === 500 || (status && status >= 500) || !status;
+
+      if (shouldFallback) {
+        if (!isCognitoConfigured()) {
+          throw new Error(
+            'Registration endpoint unavailable. Set VITE_COGNITO_* in frontend/.env for Cognito auth.'
+          );
+        }
+        const { registerWithCognito } = await import('./cognito-auth');
+        return registerWithCognito(payload);
+      }
+
+      if (status === 409) {
+        throw new Error('An account with this email already exists.');
+      }
+
+      const message = (error.response?.data as { error?: string })?.error || error.message;
+      throw new Error(message || 'Registration failed');
     }
     throw error;
   }

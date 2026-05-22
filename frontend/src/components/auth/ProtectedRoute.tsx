@@ -26,7 +26,7 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   if (allowedRoles?.length) {
     const role = normalizeRole(session?.role ?? '');
     if (!role || !allowedRoles.includes(role)) {
-      return <Navigate to={role === 'manager' ? '/dashboard' : '/my-tasks'} replace />;
+      return <Navigate to="/dashboard" replace />;
     }
   }
 

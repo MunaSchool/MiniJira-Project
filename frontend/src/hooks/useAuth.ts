@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { AuthContext, type AuthContextValue } from '@/context/AuthContext';
 import { getPostLoginRedirectPath } from '@/lib/auth-utils';
 import { toast } from '@/hooks/use-toast';
-import type { LoginCredentials } from '@/types/auth';
+import type { LoginCredentials, SignupPayload } from '@/types/auth';
+import { register } from '@/services/auth.service';
 
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
@@ -40,7 +41,7 @@ export function useLoginMutation() {
     onSuccess: (session) => {
       toast({
         title: 'Login successful',
-        description: 'Redirecting to the test welcome page…'
+        description: 'Redirecting to your workspace…'
       });
       navigate(getPostLoginRedirectPath(session.role), { replace: true });
     },
@@ -52,6 +53,63 @@ export function useLoginMutation() {
         variant: 'destructive',
         title: isCredentialError ? 'Invalid credentials' : 'Login failed',
         description: error.message || 'Please check your email and password.'
+      });
+    }
+  });
+}
+
+export function useSignupMutation() {
+  const { applySession } = useAuth();
+  const navigate = useNavigate();
+
+  return useMutation({
+    mutationFn: async ({ payload }: { payload: SignupPayload }) => {
+      const loadingToast = toast({
+        title: 'Authenticating...',
+        description: 'Creating your account'
+      });
+      try {
+        const response = await register(payload);
+        loadingToast.dismiss();
+        return response;
+      } catch (error) {
+        loadingToast.dismiss();
+        throw error;
+      }
+    },
+    onSuccess: (response, variables) => {
+      if (response?.token && response?.role && response?.user) {
+        const session = {
+          token: response.token,
+          role: response.role,
+          teamId: response.teamId ?? null,
+          user: response.user,
+          rememberDevice: true
+        };
+        applySession(session);
+        toast({
+          title: 'Logged in successfully',
+          description: 'Redirecting to your workspace.'
+        });
+        navigate(getPostLoginRedirectPath(session.role), { replace: true });
+        return;
+      }
+
+      toast({
+        title: 'Account created',
+        description: response?.message || 'You can now sign in with your new credentials.'
+      });
+      navigate('/login', { replace: true, state: { email: variables.payload.email } });
+    },
+    onError: (error: Error) => {
+      const isDuplicate =
+        error.message.includes('already exists') ||
+        error.message.includes('Duplicate') ||
+        error.message.includes('Conflict');
+      toast({
+        variant: 'destructive',
+        title: isDuplicate ? 'Account already exists' : 'Sign up failed',
+        description: error.message || 'Please review your details and try again.'
       });
     }
   });

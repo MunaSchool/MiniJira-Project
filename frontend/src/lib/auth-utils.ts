@@ -19,18 +19,12 @@ export function normalizeRole(role: string): 'manager' | 'employee' | null {
   return null;
 }
 
-/** Test landing page after login (replace with role routes in production). */
-export const POST_LOGIN_TEST_PATH = '/welcome';
-
-export function getPostLoginPath(role: string): string {
-  const normalized = normalizeRole(role);
-  if (normalized === 'manager') return '/dashboard';
-  if (normalized === 'employee') return '/my-tasks';
-  return '/login';
+export function getPostLoginPath(_role: string): string {
+  return '/dashboard';
 }
 
-export function getPostLoginRedirectPath(_role: string): string {
-  return POST_LOGIN_TEST_PATH;
+export function getPostLoginRedirectPath(role: string): string {
+  return getPostLoginPath(role);
 }
 
 export function persistSession(session: AuthSession): void {

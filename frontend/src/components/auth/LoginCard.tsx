@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ArrowRight, LayoutDashboard, Loader2, Lock, Mail } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, Eye, EyeOff, LayoutDashboard, Loader2, Lock, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -14,6 +15,7 @@ export function LoginCard() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberDevice, setRememberDevice] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const loginMutation = useLoginMutation();
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -33,7 +35,7 @@ export function LoginCard() {
     <>
       <div className="glass-card w-full p-8 sm:p-9">
         <div className="mb-6 flex flex-col items-center text-center">
-          <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-white shadow-glow">
+          <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-glow">
             <LayoutDashboard className="h-5 w-5" strokeWidth={2.25} />
           </div>
           <h1 className="text-2xl font-bold tracking-tight">Mini Jira Cloud</h1>
@@ -75,14 +77,23 @@ export function LoginCard() {
               <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loginMutation.isPending}
+                className="pr-10"
                 required
               />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition hover:text-foreground"
+                onClick={() => setShowPassword((value) => !value)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
           </div>
 
@@ -115,7 +126,7 @@ export function LoginCard() {
 
         <div className="relative my-6">
           <Separator />
-          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/80">
+          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/80">
             Or continue with
           </span>
         </div>
@@ -124,13 +135,9 @@ export function LoginCard() {
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           New to Mini Jira?{' '}
-          <button
-            type="button"
-            className="font-semibold text-primary hover:text-primary-dark"
-            onClick={() => toast({ title: 'Sign up', description: 'Registration via Cognito when enabled.' })}
-          >
+          <Link className="font-semibold text-primary hover:text-primary-dark" to="/signup">
             Sign up for an account
-          </button>
+          </Link>
         </p>
       </div>
       <AuthFooter />
