@@ -1,5 +1,4 @@
 const projModel = require('../models/projects');
-///////////////////////////////////dont forgetttttt///////////////////////
 // Helper to check if user is manager
 const isManager = (user) => user && user.role === 'Manager';
 
