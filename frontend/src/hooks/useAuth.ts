@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { AuthContext, type AuthContextValue } from '@/context/AuthContext';
 import { getPostLoginRedirectPath } from '@/lib/auth-utils';
 import { toast } from '@/hooks/use-toast';
-import type { LoginCredentials, SignupPayload } from '@/types/auth';
+import type { LoginCredentials, SignupPayload, AuthSession } from '@/types/auth';
 import { register } from '@/services/auth.service';
 
 export function useAuth(): AuthContextValue {
@@ -39,11 +39,13 @@ export function useLoginMutation() {
       }
     },
     onSuccess: (session) => {
-      toast({
-        title: 'Login successful',
-        description: 'Redirecting to your workspace…'
-      });
-      navigate(getPostLoginRedirectPath(session.role), { replace: true });
+      if (session) {
+        toast({
+          title: 'Login successful',
+          description: 'Redirecting to your workspace…'
+        });
+        navigate(getPostLoginRedirectPath(session.role), { replace: true });
+      }
     },
     onError: (error: Error) => {
       const isCredentialError =
@@ -79,11 +81,16 @@ export function useSignupMutation() {
     },
     onSuccess: (response, variables) => {
       if (response?.token && response?.role && response?.user) {
-        const session = {
+        const session: AuthSession = {
           token: response.token,
           role: response.role,
           teamId: response.teamId ?? null,
-          user: response.user,
+          user: {
+            ...response.user,
+            email: response.user.email ?? '',
+            name: response.user.name ?? response.user.email ?? '',
+            sub: (response.user as any).sub ?? response.user.userId ?? ''
+          },
           rememberDevice: true
         };
         applySession(session);

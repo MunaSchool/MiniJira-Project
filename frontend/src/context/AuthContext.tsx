@@ -1,25 +1,17 @@
 import { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react';
 import { decodeJwt } from 'jose';
+import type { AuthSession, LoginCredentials } from '@/types/auth';
+import { login as loginApi } from '@/services/auth.service';
 
 // --- Types for backward compatibility with old UI ---
-interface AuthSession {
-  token: string;
-  role: string;
-  teamId: string | null;
-  user: {
-    email: string;
-    name: string;
-    sub: string;
-  };
-  rememberDevice: boolean;
-}
+// Reuse the shared AuthSession definition from frontend/types/auth.ts
 
-interface AuthContextValue {
+export interface AuthContextValue {
   // New (Cognito Hosted UI)
   user: any;
   loading: boolean;
   authError: string | null;
-  login: () => void;
+  login: (credentials?: LoginCredentials, rememberDevice?: boolean) => Promise<AuthSession | void>;
   logout: () => void;
   // Old (compatibility)
   session: AuthSession | null;
@@ -29,7 +21,7 @@ interface AuthContextValue {
   updateSessionUser: (user: AuthSession['user']) => void;
 }
 
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // New auth state
@@ -134,13 +126,37 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const login = () => {
-    const loginUrl = `${import.meta.env.VITE_COGNITO_DOMAIN}/login?` +
-      `client_id=${import.meta.env.VITE_CLIENT_ID}&` +
-      `response_type=code&` +
-      `redirect_uri=${import.meta.env.VITE_REDIRECT_URI}&` +
-      `scope=email+openid+profile`;
-    window.location.href = loginUrl;
+  const login = async (credentials?: LoginCredentials, rememberDevice = false) => {
+    if (!credentials) {
+      const loginUrl = `${import.meta.env.VITE_COGNITO_DOMAIN}/login?` +
+        `client_id=${import.meta.env.VITE_CLIENT_ID}&` +
+        `response_type=code&` +
+        `redirect_uri=${import.meta.env.VITE_REDIRECT_URI}&` +
+        `scope=email+openid+profile`;
+      window.location.href = loginUrl;
+      return;
+    }
+
+    const response = await loginApi(credentials);
+    const session: AuthSession = {
+      token: response.token,
+      role: response.role,
+      teamId: response.teamId ?? null,
+      user: {
+        email: response.user.email ?? '',
+        name: response.user.name ?? response.user.email ?? '',
+        sub: (response.user as any).sub ?? response.user.userId ?? ''
+      },
+      rememberDevice
+    };
+
+    if (rememberDevice) {
+      localStorage.setItem('authTokens', JSON.stringify({ id_token: session.token }));
+    }
+
+    setSession(session);
+    setUser({ ...response.user, sub: session.user.sub });
+    return session;
   };
 
   const logout = () => {
@@ -154,8 +170,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Compatibility functions (no‑op or localStorage based)
   const applySession = useCallback((newSession: AuthSession) => {
-    // The old UI might call this; we ignore because we manage session via tokens.
-    console.warn('applySession called but ignored – using Cognito Hosted UI');
+    setSession(newSession);
+    if (newSession.rememberDevice) {
+      localStorage.setItem('authTokens', JSON.stringify({ id_token: newSession.token }));
+    }
+    setUser({ ...newSession.user, sub: newSession.user.sub });
   }, []);
 
   const updateSessionUser = useCallback((updatedUser: AuthSession['user']) => {

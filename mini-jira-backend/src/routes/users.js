@@ -1,30 +1,64 @@
 const express = require('express');
-const { GetCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+const { GetCommand, UpdateCommand, ScanCommand } = require('@aws-sdk/lib-dynamodb');
 const router = express.Router();
 const { getDocumentClient } = require('../services/dynamodb');
 const { updateCognitoUserAttributes } = require('../services/cognito');
 
-router.get('/profile', async (req, res, next) => {
-  try {
-    const docClient = getDocumentClient();
-    const result = await docClient.send(
-      new GetCommand({
-        TableName: process.env.DYNAMODB_USERS_TABLE,
-        Key: { userId: req.user.userId }
-      })
-    );
+async function getUserRecord(userId) {
+  const docClient = getDocumentClient();
+  const result = await docClient.send(
+    new GetCommand({
+      TableName: process.env.DYNAMODB_USERS_TABLE,
+      Key: { userId }
+    })
+  );
+  return result.Item;
+}
 
-    if (!result.Item) {
-      return res.status(404).json({ error: 'User not found' });
+router.get('/', async (req, res, next) => {
+  try {
+    const { teamId } = req.query;
+
+    if (req.user.role !== 'Manager' && teamId) {
+      return res.status(403).json({ error: 'Only managers can list users by team' });
     }
 
-    res.json(result.Item);
+    if (req.user.role !== 'Manager' && !teamId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const docClient = getDocumentClient();
+    const params = {
+      TableName: process.env.DYNAMODB_USERS_TABLE
+    };
+
+    if (teamId) {
+      params.FilterExpression = 'teamId = :teamId';
+      params.ExpressionAttributeValues = { ':teamId': teamId };
+    }
+
+    const result = await docClient.send(new ScanCommand(params));
+    res.json(result.Items || []);
   } catch (err) {
     next(err);
   }
 });
 
-router.put('/profile', async (req, res, next) => {
+router.get(['/profile', '/me'], async (req, res, next) => {
+  try {
+    const user = await getUserRecord(req.user.userId);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(user);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put(['/profile', '/me'], async (req, res, next) => {
   try {
     const { name, email } = req.body;
     const updates = [];

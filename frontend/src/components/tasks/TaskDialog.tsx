@@ -2,53 +2,7 @@ import { Calendar, ClipboardList, MessageSquare, Paperclip, Trash2, ImagePlus } 
 import { useEffect, useState, useRef } from 'react';
 import { getPresignedUrl } from '@/api/uploads';
 import { updateTask } from '@/services/tasks.service';
-  // Image upload state
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 import { getComments, createComment } from '@/api/comments';
-interface Comment {
-  commentId: string;
-  text: string;
-  authorId: string;
-  createdAt: string;
-}
-  // Comments state
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [commentText, setCommentText] = useState('');
-  const [loadingComments, setLoadingComments] = useState(false);
-  const [submittingComment, setSubmittingComment] = useState(false);
-
-  // Fetch comments when dialog opens and task is present
-  useEffect(() => {
-    if (open && task?.taskId) {
-      setLoadingComments(true);
-      getComments(task.taskId)
-        .then((res) => {
-          setComments(res.data || []);
-        })
-        .catch(() => {
-          toast({ variant: 'destructive', title: 'Failed to load comments' });
-        })
-        .finally(() => setLoadingComments(false));
-    } else {
-      setComments([]);
-    }
-  }, [open, task]);
-
-  // Add new comment
-  const handleAddComment = async () => {
-    if (!commentText.trim() || !task?.taskId) return;
-    setSubmittingComment(true);
-    try {
-      const res = await createComment({ taskId: task.taskId, text: commentText });
-      setComments((prev) => [...prev, res.data]);
-      setCommentText('');
-    } catch {
-      toast({ variant: 'destructive', title: 'Failed to add comment' });
-    } finally {
-      setSubmittingComment(false);
-    }
-  };
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -57,6 +11,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Task, TaskStatus } from '@/types/tasks';
 import { toast } from '@/hooks/use-toast';
+
+interface Comment {
+  commentId: string;
+  text: string;
+  authorId: string;
+  createdAt: string;
+}
 
 const STATUSES: TaskStatus[] = ['To Do', 'In Progress', 'In Review', 'Done'];
 const PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'];
@@ -97,6 +58,10 @@ export function TaskDialog({
 
   const isEdit = mode === 'edit';
   const statusValue = status;
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [commentText, setCommentText] = useState('');
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [submittingComment, setSubmittingComment] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -119,6 +84,39 @@ export function TaskDialog({
     setTeamId(defaultTeamId || '');
     setStatus('To Do');
   }, [open, task, isEdit, defaultAssigneeId, defaultTeamId]);
+
+  useEffect(() => {
+    if (open && task?.taskId) {
+      setLoadingComments(true);
+      getComments(task.taskId)
+        .then((res) => {
+          setComments(res.data || []);
+        })
+        .catch(() => {
+          toast({ variant: 'destructive', title: 'Failed to load comments' });
+        })
+        .finally(() => setLoadingComments(false));
+    } else {
+      setComments([]);
+    }
+  }, [open, task]);
+
+  const handleAddComment = async () => {
+    if (!commentText.trim() || !task?.taskId) return;
+    setSubmittingComment(true);
+    try {
+      const res = await createComment({ taskId: task.taskId, text: commentText });
+      setComments((prev) => [...prev, res.data]);
+      setCommentText('');
+    } catch {
+      toast({ variant: 'destructive', title: 'Failed to add comment' });
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
 
   const handleSubmit = () => {
     if (isEdit && task) {

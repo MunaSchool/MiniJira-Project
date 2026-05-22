@@ -62,22 +62,21 @@ res.status(201).json(taskWithImages);
 exports.getTasks = async (req, res) => {
   try {
     const { role, teamId, userId } = req.user;
-    const { status, priority, assigneeId, limit } = req.query;
+    const { status, priority, assigneeId, limit, teamId: queryTeamId } = req.query;
     
     let tasks;
     
     if (role === 'Manager') {
-      // Manager sees all tasks (optionally filtered by assignee)
       tasks = await TaskModel.findAll({
         assigneeId,
         role,
         status,
         priority,
-        limit
+        limit,
+        teamId: queryTeamId
       });
     } else {
       // Employee: only see their team's tasks
-      // Security: can only filter by their own assigneeId
       if (assigneeId && assigneeId !== userId) {
         return res.status(403).json({ error: 'Cannot view other employees tasks' });
       }
@@ -90,8 +89,6 @@ exports.getTasks = async (req, res) => {
       });
     }
     
-    //res.json({ tasks, count: tasks.length });
-    // ana
     const tasksWithImages = tasks.map(task => ({
       ...task,
       imageUrl: task.imageKey
@@ -100,11 +97,9 @@ exports.getTasks = async (req, res) => {
       resizedImageUrl: task.imageKey
         ? `${CLOUDFRONT_URL}/resized-${task.imageKey}`
         : null
-}));
-// lhd hena
-res.json({ tasks: tasksWithImages, count: tasks.length });
+    }));
 
-
+    res.json({ tasks: tasksWithImages, count: tasks.length });
   } catch (error) {
     console.error('Get tasks error:', error);
     res.status(500).json({ error: 'Failed to fetch tasks' });
@@ -118,23 +113,53 @@ exports.getTaskById = async (req, res) => {
     if (!task) return res.status(404).json({ error: 'Task not found' });
     if (!allowed) return res.status(403).json({ error: 'Access denied - task belongs to different team' });
     
-    //res.json(task);
-    // ana
-      
-      const taskWithImages = {
-        ...task,
-        imageUrl: task.imageKey
-          ? `${CLOUDFRONT_URL}/${task.imageKey}`
-          : null,
-        resizedImageUrl: task.imageKey
-          ? `${CLOUDFRONT_URL}/resized-${task.imageKey}`
-          : null
-};
-res.json(taskWithImages);
+    const taskWithImages = {
+      ...task,
+      imageUrl: task.imageKey
+        ? `${CLOUDFRONT_URL}/${task.imageKey}`
+        : null,
+      resizedImageUrl: task.imageKey
+        ? `${CLOUDFRONT_URL}/resized-${task.imageKey}`
+        : null
+    };
 
+    res.json(taskWithImages);
   } catch (error) {
     console.error('Get task error:', error);
     res.status(500).json({ error: 'Failed to fetch task' });
+  }
+};
+
+exports.updateTaskStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!status) {
+      return res.status(400).json({ error: 'Status is required' });
+    }
+
+    const allowedStatuses = ['To Do', 'In Progress', 'In Review', 'Done'];
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status value' });
+    }
+
+    const { allowed, task: existingTask } = await canAccessTask(req.params.id, req.user);
+    if (!existingTask) return res.status(404).json({ error: 'Task not found' });
+    if (!allowed) return res.status(403).json({ error: 'Access denied' });
+
+    if (req.user.role === 'Employee' && existingTask.assigneeId !== req.user.userId && existingTask.teamId !== req.user.teamId) {
+      return res.status(403).json({ error: 'Employees can only update tasks assigned to their team' });
+    }
+
+    if (existingTask.status !== status) {
+      await TaskModel.logStatusChange(req.params.id, existingTask.status, status, req.user);
+    }
+
+    const updatedTask = await TaskModel.update(req.params.id, { status }, req.user);
+    if (!updatedTask) return res.status(400).json({ error: 'Failed to update status' });
+    res.json(updatedTask);
+  } catch (error) {
+    console.error('Update status error:', error);
+    res.status(500).json({ error: 'Failed to update task status' });
   }
 };
 

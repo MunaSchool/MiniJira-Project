@@ -1,3 +1,4 @@
+import type { LucideIcon } from 'lucide-react';
 import { Bell, ChevronDown, LayoutDashboard, LifeBuoy, LogOut, PanelLeft, Settings, User, FolderKanban, CheckCircle2, Users } from 'lucide-react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
@@ -23,7 +24,14 @@ interface AppShellProps {
   actions?: React.ReactNode;
 }
 
-const sidebarBase = [
+interface SidebarItem {
+  label: string;
+  path: string;
+  icon: LucideIcon;
+  role?: string;
+}
+
+const sidebarBase: SidebarItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { label: 'Projects', path: '/projects', icon: FolderKanban },
   { label: 'Tasks', path: '/tasks', icon: CheckCircle2 },

@@ -38,28 +38,86 @@ class TaskModel {
   // Find all (with filters)
   static async findAll({ teamId, role, status, priority, assigneeId, limit = 50 }) {
     let params = { TableName: TASKS_TABLE, Limit: parseInt(limit) };
-    
-    // Use GSI for team queries (employees)
-    if (teamId && role !== 'Manager') {
+
+    if (teamId) {
       params.IndexName = 'teamId-index';
       params.KeyConditionExpression = 'teamId = :teamId';
       params.ExpressionAttributeValues = { ':teamId': teamId };
+      const filterExpressions = [];
+
+      if (assigneeId) {
+        filterExpressions.push('assigneeId = :assigneeId');
+        params.ExpressionAttributeValues[':assigneeId'] = assigneeId;
+      }
+      if (status) {
+        filterExpressions.push('status = :status');
+        params.ExpressionAttributeValues[':status'] = status;
+      }
+      if (priority) {
+        filterExpressions.push('priority = :priority');
+        params.ExpressionAttributeValues[':priority'] = priority;
+      }
+      if (filterExpressions.length > 0) {
+        params.FilterExpression = filterExpressions.join(' AND ');
+      }
+
       const result = await docClient.send(new QueryCommand(params));
       return result.Items || [];
     }
-    
-    // Manager: use assignee GSI if specified
+
     if (assigneeId) {
       params.IndexName = 'assigneeId-index';
       params.KeyConditionExpression = 'assigneeId = :assigneeId';
       params.ExpressionAttributeValues = { ':assigneeId': assigneeId };
+      if (status) {
+        params.FilterExpression = 'status = :status';
+        params.ExpressionAttributeValues[':status'] = status;
+      }
+      if (priority) {
+        params.FilterExpression = params.FilterExpression
+          ? `${params.FilterExpression} AND priority = :priority`
+          : 'priority = :priority';
+        params.ExpressionAttributeValues[':priority'] = priority;
+      }
       const result = await docClient.send(new QueryCommand(params));
       return result.Items || [];
     }
-    
-    // Fallback for managers with no filters (scan - acceptable for demo scale)
+
     const { ScanCommand } = require('@aws-sdk/lib-dynamodb');
     const result = await docClient.send(new ScanCommand(params));
+    return result.Items || [];
+  }
+
+  static async findByTeam(teamId, { status, priority, assigneeId, limit = 50 }) {
+    const params = {
+      TableName: TASKS_TABLE,
+      IndexName: 'teamId-index',
+      KeyConditionExpression: 'teamId = :teamId',
+      ExpressionAttributeValues: {
+        ':teamId': teamId
+      },
+      Limit: parseInt(limit)
+    };
+
+    const filterExpressions = [];
+    if (assigneeId) {
+      filterExpressions.push('assigneeId = :assigneeId');
+      params.ExpressionAttributeValues[':assigneeId'] = assigneeId;
+    }
+    if (status) {
+      filterExpressions.push('status = :status');
+      params.ExpressionAttributeValues[':status'] = status;
+    }
+    if (priority) {
+      filterExpressions.push('priority = :priority');
+      params.ExpressionAttributeValues[':priority'] = priority;
+    }
+
+    if (filterExpressions.length > 0) {
+      params.FilterExpression = filterExpressions.join(' AND ');
+    }
+
+    const result = await docClient.send(new QueryCommand(params));
     return result.Items || [];
   }
   
@@ -74,17 +132,18 @@ class TaskModel {
   static async update(taskId, updates, user) {
     // Build update expression dynamically
     const allowedFields = [
-    'title',
-    'description',
-    'status',
-    'priority',
-    'deadline',
-    'assigneeId',
-    'teamId',
-    'imageKey',
-    'imageHistory' ,
-    'closedAt'
-];
+      'title',
+      'description',
+      'status',
+      'priority',
+      'deadline',
+      'assigneeId',
+      'teamId',
+      'imageKey',
+      'imageHistory',
+      'closedAt',
+      'commentCount'
+    ];
     const updateParts = [];
     const expressionValues = {};
     const expressionNames = {};
