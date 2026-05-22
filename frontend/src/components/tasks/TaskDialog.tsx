@@ -1,5 +1,54 @@
-import { Calendar, ClipboardList, MessageSquare, Paperclip, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Calendar, ClipboardList, MessageSquare, Paperclip, Trash2, ImagePlus } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { getPresignedUrl } from '@/api/uploads';
+import { updateTask } from '@/services/tasks.service';
+  // Image upload state
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+import { getComments, createComment } from '@/api/comments';
+interface Comment {
+  commentId: string;
+  text: string;
+  authorId: string;
+  createdAt: string;
+}
+  // Comments state
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [commentText, setCommentText] = useState('');
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [submittingComment, setSubmittingComment] = useState(false);
+
+  // Fetch comments when dialog opens and task is present
+  useEffect(() => {
+    if (open && task?.taskId) {
+      setLoadingComments(true);
+      getComments(task.taskId)
+        .then((res) => {
+          setComments(res.data || []);
+        })
+        .catch(() => {
+          toast({ variant: 'destructive', title: 'Failed to load comments' });
+        })
+        .finally(() => setLoadingComments(false));
+    } else {
+      setComments([]);
+    }
+  }, [open, task]);
+
+  // Add new comment
+  const handleAddComment = async () => {
+    if (!commentText.trim() || !task?.taskId) return;
+    setSubmittingComment(true);
+    try {
+      const res = await createComment({ taskId: task.taskId, text: commentText });
+      setComments((prev) => [...prev, res.data]);
+      setCommentText('');
+    } catch {
+      toast({ variant: 'destructive', title: 'Failed to add comment' });
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -154,12 +203,42 @@ export function TaskDialog({
                 <ClipboardList className="h-4 w-4" />
                 Task Discussion
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Comments are unavailable until the backend comments API is added.
-              </p>
-              <div className="mt-3 rounded-xl border border-dashed border-border/50 bg-[var(--surface)] p-3 text-xs text-muted-foreground">
-                No comments available.
+              <div className="mt-2">
+                {loadingComments ? (
+                  <div className="text-xs text-muted-foreground">Loading comments...</div>
+                ) : comments.length === 0 ? (
+                  <div className="text-xs text-muted-foreground">No comments yet.</div>
+                ) : (
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {comments.map((c) => (
+                      <div key={c.commentId} className="rounded bg-[var(--surface)] p-2 border text-xs">
+                        <div className="font-semibold">{c.authorId}</div>
+                        <div>{c.text}</div>
+                        <div className="text-[10px] text-muted-foreground">{new Date(c.createdAt).toLocaleString()}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
+              {isEdit && (
+                <div className="mt-3 flex gap-2">
+                  <Textarea
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    placeholder="Add a comment..."
+                    rows={2}
+                    className="flex-1"
+                    disabled={submittingComment}
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleAddComment}
+                    disabled={submittingComment || !commentText.trim()}
+                  >
+                    {submittingComment ? 'Adding...' : 'Add'}
+                  </Button>
+                </div>
+              )}
             </div>
 
             <div className="rounded-2xl border border-border/50 bg-[var(--surface-muted)] p-4">
@@ -167,11 +246,67 @@ export function TaskDialog({
                 <Paperclip className="h-4 w-4" />
                 Attachments
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                File uploads are disabled until the backend upload endpoints are ready.
-              </p>
-              <div className="mt-3 rounded-xl border border-dashed border-border/50 bg-[var(--surface)] p-3 text-xs text-muted-foreground">
-                No attachments available.
+              <div className="mt-2 flex flex-col gap-2">
+                {/* Show current image if present */}
+                {task?.imageKey && (
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs">Original:</span>
+                    <img
+                      src={`https://d2tb1dxlwmny4q.cloudfront.net/${task.imageKey}`}
+                      alt="Task attachment"
+                      className="max-h-32 rounded border"
+                    />
+                    <span className="text-xs">Resized:</span>
+                    <img
+                      src={`https://d2tb1dxlwmny4q.cloudfront.net/resized-${task.imageKey}`}
+                      alt="Task resized"
+                      className="max-h-20 rounded border"
+                    />
+                  </div>
+                )}
+                {isEdit && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      ref={fileInputRef}
+                      style={{ display: 'none' }}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file || !task?.taskId) return;
+                        setUploading(true);
+                        try {
+                          // 1. Get presigned URL
+                          const { data } = await getPresignedUrl(file.name, file.type);
+                          // 2. Upload to S3
+                          await fetch(data.url, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': file.type },
+                            body: file,
+                          });
+                          // 3. Update task with imageKey
+                          await updateTask(task.taskId, { imageKey: data.key });
+                          toast({ title: 'Image uploaded! Please reopen the dialog to see the update.' });
+                        } catch {
+                          toast({ variant: 'destructive', title: 'Image upload failed' });
+                        } finally {
+                          setUploading(false);
+                        }
+                      }}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      className="flex items-center gap-1"
+                    >
+                      <ImagePlus className="w-4 h-4" />
+                      {uploading ? 'Uploading...' : 'Upload Image'}
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
