@@ -28,10 +28,10 @@ exports.getProjects = async (req, res) => {
   }
 };
 
-// GET /projects/:projectId
+// GET /projects/:id
 exports.getProjectById = async (req, res) => {
   try {
-    const { projectId } = req.params;
+    const { id: projectId } = req.params;
     const project = await projModel.findById(projectId);
 
     if (!project) {
@@ -88,10 +88,13 @@ exports.updateProject = async (req, res) => {
       return res.status(403).json({ error: 'Only managers can update projects' });
     }
 
-    const { projectId } = req.params;
+    const { id: projectId } = req.params;
     const { name, description, teamId, managerId } = req.body;
 
-    //verify the project exists before updating
+    if (!projectId) {
+      return res.status(400).json({ error: 'Project id is required' });
+    }
+
     const existing = await projModel.findById(projectId);
     if (!existing) {
       return res.status(404).json({ error: 'Project not found' });
@@ -113,7 +116,11 @@ exports.deleteProject = async (req, res) => {
       return res.status(403).json({ error: 'Only managers can delete projects' });
     }
 
-    const { projectId } = req.params;
+    const { id: projectId } = req.params;
+
+    if (!projectId) {
+      return res.status(400).json({ error: 'Project id is required' });
+    }
 
     const existing = await projModel.findById(projectId);
     if (!existing) {
