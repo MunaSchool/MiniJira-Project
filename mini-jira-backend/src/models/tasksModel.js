@@ -6,7 +6,11 @@ const client = new DynamoDBClient({ region: process.env.AWS_REGION });
 const docClient = DynamoDBDocumentClient.from(client);
 
 const TASKS_TABLE = process.env.DYNAMODB_TASKS_TABLE || process.env.TASKS_TABLE || 'Tasks';
-const AUDIT_TABLE = process.env.DYNAMODB_TASK_AUDIT_TABLE || process.env.AUDIT_TABLE || null;
+const AUDIT_TABLE =
+  process.env.DYNAMODB_TASK_AUDIT_TABLE ||
+  process.env.DYNAMODB_ACTIVITY_LOG_TABLE ||
+  process.env.AUDIT_TABLE ||
+  null;
 
 class TaskModel {
   // Create
@@ -14,16 +18,17 @@ class TaskModel {
     const taskId = uuidv4();
     const now = new Date().toISOString();
     
-    const task = {
-      taskId,
-      ...taskData,
-      status: taskData.status || 'To Do',
-      priority: taskData.priority || 'Medium',
-      createdAt: now,
-      updatedAt: now,
-      createdBy: userId,
-      commentCount: 0
-    };
+  const task = {
+    taskId,
+    ...taskData,
+    imageHistory: taskData.imageKey ? [taskData.imageKey] : [],
+    status: taskData.status || 'To Do',
+    priority: taskData.priority || 'Medium',
+    createdAt: now,
+    updatedAt: now,
+    createdBy: userId,
+    commentCount: 0
+  };
     
     const command = new PutCommand({ TableName: TASKS_TABLE, Item: task });
     await docClient.send(command);
@@ -68,7 +73,18 @@ class TaskModel {
   // Update
   static async update(taskId, updates, user) {
     // Build update expression dynamically
-    const allowedFields = ['title', 'description', 'status', 'priority', 'deadline', 'assigneeId', 'imageKey'];
+    const allowedFields = [
+    'title',
+    'description',
+    'status',
+    'priority',
+    'deadline',
+    'assigneeId',
+    'teamId',
+    'imageKey',
+    'imageHistory' ,
+    'closedAt'
+];
     const updateParts = [];
     const expressionValues = {};
     const expressionNames = {};
