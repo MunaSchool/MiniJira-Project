@@ -6,7 +6,11 @@ const client = new DynamoDBClient({ region: process.env.AWS_REGION });
 const docClient = DynamoDBDocumentClient.from(client);
 
 const TASKS_TABLE = process.env.DYNAMODB_TASKS_TABLE || process.env.TASKS_TABLE || 'Tasks';
-const AUDIT_TABLE = process.env.DYNAMODB_TASK_AUDIT_TABLE || process.env.AUDIT_TABLE || null;
+const AUDIT_TABLE =
+  process.env.DYNAMODB_TASK_AUDIT_TABLE ||
+  process.env.DYNAMODB_ACTIVITY_LOG_TABLE ||
+  process.env.AUDIT_TABLE ||
+  null;
 
 class TaskModel {
   // Create
@@ -78,7 +82,8 @@ class TaskModel {
     'assigneeId',
     'teamId',
     'imageKey',
-    'imageHistory'
+    'imageHistory' ,
+    'closedAt'
 ];
     const updateParts = [];
     const expressionValues = {};
