@@ -1,10 +1,12 @@
 const express = require('express');
 const router = express.Router();
+const projectController = require('../controllers/projectController');
+const { authMiddleware, requireRole } = require('../middleware/auth');
 
-router.post('/', (req, res) => res.status(501).json({ error: 'Not implemented (Person 3)' }));
-router.get('/', (req, res) => res.status(501).json({ error: 'Not implemented (Person 3)' }));
-router.get('/:id', (req, res) => res.status(501).json({ error: 'Not implemented (Person 3)' }));
-router.put('/:id', (req, res) => res.status(501).json({ error: 'Not implemented (Person 3)' }));
-router.delete('/:id', (req, res) => res.status(501).json({ error: 'Not implemented (Person 3)' }));
+router.get('/', authMiddleware, projectController.getProjects);
+router.get('/:id', authMiddleware, projectController.getProjectById);
+router.post('/', authMiddleware, requireRole(['Manager']), projectController.createProject);
+router.put('/:id', authMiddleware, requireRole(['Manager']), projectController.updateProject);
+router.delete('/:id', authMiddleware, requireRole(['Manager']), projectController.deleteProject);
 
 module.exports = router;

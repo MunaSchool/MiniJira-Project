@@ -18,16 +18,17 @@ class TaskModel {
     const taskId = uuidv4();
     const now = new Date().toISOString();
     
-    const task = {
-      taskId,
-      ...taskData,
-      status: taskData.status || 'To Do',
-      priority: taskData.priority || 'Medium',
-      createdAt: now,
-      updatedAt: now,
-      createdBy: userId,
-      commentCount: 0
-    };
+  const task = {
+    taskId,
+    ...taskData,
+    imageHistory: taskData.imageKey ? [taskData.imageKey] : [],
+    status: taskData.status || 'To Do',
+    priority: taskData.priority || 'Medium',
+    createdAt: now,
+    updatedAt: now,
+    createdBy: userId,
+    commentCount: 0
+  };
     
     const command = new PutCommand({ TableName: TASKS_TABLE, Item: task });
     await docClient.send(command);
@@ -72,7 +73,18 @@ class TaskModel {
   // Update
   static async update(taskId, updates, user) {
     // Build update expression dynamically
-    const allowedFields = ['title', 'description', 'status', 'priority', 'deadline', 'assigneeId', 'imageKey', 'closedAt'];
+    const allowedFields = [
+    'title',
+    'description',
+    'status',
+    'priority',
+    'deadline',
+    'assigneeId',
+    'teamId',
+    'imageKey',
+    'imageHistory' ,
+    'closedAt'
+];
     const updateParts = [];
     const expressionValues = {};
     const expressionNames = {};
