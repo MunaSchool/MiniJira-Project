@@ -16,6 +16,7 @@
     "@aws-sdk/client-sns": "^3.1048.0",
     "@aws-sdk/client-sqs": "^3.1048.0",
     "@aws-sdk/lib-dynamodb": "^3.1051.0",
+    "@aws-sdk/s3-request-presigner": "^3.1053.0",
     "@aws-sdk/util-dynamodb": "^3.996.2",
     "bcryptjs": "^3.0.3",
     "cognito-express": "^3.0.4",
