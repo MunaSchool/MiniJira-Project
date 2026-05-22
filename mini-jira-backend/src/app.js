@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -25,6 +26,7 @@ app.use('/api/tasks', authMiddleware, taskRoutes);
 app.use('/api/projects', authMiddleware, projectRoutes);
 app.use('/api/comments', authMiddleware, commentRoutes);
 app.use('/api/uploads', authMiddleware, uploadRoutes);
+
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Not Found' });
