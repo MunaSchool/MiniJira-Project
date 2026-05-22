@@ -1,11 +1,21 @@
 const { PublishCommand } = require('@aws-sdk/client-sns');
 const { snsClient } = require('./aws');
 
-const TASK_ASSIGNMENT_TOPIC_ARN = process.env.TASK_ASSIGNMENT_TOPIC_ARN;
+function getAssignmentTopicArn(assigneeId) {
+  const topicsByAssignee = {
+    // Replace the keys with your real Cognito user IDs / assigneeIds
+    "40eca9bc-30d1-70d4-bc1e-657bc062e1b1": process.env.SARA_ASSIGNMENT_TOPIC_ARN,
+    "50ccd9dc-2061-703f-48d2-ade1bda28ec3": process.env.OMAR_ASSIGNMENT_TOPIC_ARN,
+  };
+
+  return topicsByAssignee[assigneeId];
+}
 
 async function publishTaskAssignment(task, assignedBy) {
-  if (!TASK_ASSIGNMENT_TOPIC_ARN) {
-    console.warn('TASK_ASSIGNMENT_TOPIC_ARN is missing. SNS publish skipped.');
+  const topicArn = getAssignmentTopicArn(task.assigneeId);
+
+  if (!topicArn) {
+    console.warn(`No SNS topic configured for assignee ${task.assigneeId}. SNS publish skipped.`);
     return null;
   }
 
@@ -23,13 +33,17 @@ async function publishTaskAssignment(task, assignedBy) {
   };
 
   const command = new PublishCommand({
-    TopicArn: TASK_ASSIGNMENT_TOPIC_ARN,
+    TopicArn: topicArn,
     Subject: `New task assigned: ${task.title}`,
     Message: JSON.stringify(event),
     MessageAttributes: {
       eventType: {
         DataType: 'String',
         StringValue: 'TASK_ASSIGNED'
+      },
+      assigneeId: {
+        DataType: 'String',
+        StringValue: task.assigneeId
       },
       teamId: {
         DataType: 'String',

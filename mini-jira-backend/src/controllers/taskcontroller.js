@@ -1,5 +1,6 @@
 const TaskModel = require('../models/tasksModel');
 const snsService = require('../services/sns');
+const cloudWatchService = require('../services/cloudwatch');
 
 // Helper: Check if user can access a task
 async function canAccessTask(taskId, user) {
@@ -21,6 +22,8 @@ exports.createTask = async (req, res) => {
     const task = await TaskModel.create({
       title, description, priority, deadline, assigneeId, teamId, imageKey
     }, req.user.sub);
+
+    await cloudWatchService.publishTaskCreated(task.teamId);
     
     // TODO: Trigger SNS for assignment (Person 5)
     // await snsService.publishAssignment(task); //Done here
@@ -124,9 +127,29 @@ exports.updateTask = async (req, res) => {
         await TaskModel.logStatusChange(req.params.id, existingTask.status, updates.status, req.user);
       }
     }
+
+    const isClosingTask = updates.status === 'Done' && existingTask.status !== 'Done';
+
+    if (isClosingTask) {
+      updates.closedAt = new Date().toISOString();
+    }
     
     const updatedTask = await TaskModel.update(req.params.id, updates, req.user);
     if (!updatedTask) return res.status(400).json({ error: 'No valid fields to update' });
+
+    if (isClosingTask) {
+      await cloudWatchService.publishTaskClosed(updatedTask.teamId);
+
+      if (updatedTask.createdAt && updatedTask.closedAt) {
+        const createdTime = new Date(updatedTask.createdAt).getTime();
+        const closedTime = new Date(updatedTask.closedAt).getTime();
+        const timeToCloseSeconds = Math.round((closedTime - createdTime) / 1000);
+
+        if (timeToCloseSeconds >= 0) {
+          await cloudWatchService.publishTimeToClose(timeToCloseSeconds, updatedTask.teamId);
+        }
+      }
+    }
     
     res.json(updatedTask);
   } catch (error) {
