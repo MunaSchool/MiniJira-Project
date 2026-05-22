@@ -1,29 +1,74 @@
-import { createContext, useContext, useEffect, useState, useRef } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react';
 import { decodeJwt } from 'jose';
 
-interface AuthContextType {
+// --- Types for backward compatibility with old UI ---
+interface AuthSession {
+  token: string;
+  role: string;
+  teamId: string | null;
+  user: {
+    email: string;
+    name: string;
+    sub: string;
+  };
+  rememberDevice: boolean;
+}
+
+interface AuthContextValue {
+  // New (Cognito Hosted UI)
   user: any;
   loading: boolean;
   authError: string | null;
   login: () => void;
   logout: () => void;
+  // Old (compatibility)
+  session: AuthSession | null;
+  isAuthenticated: boolean;
+  isInitializing: boolean;
+  applySession: (session: AuthSession) => void;
+  updateSessionUser: (user: AuthSession['user']) => void;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  // New auth state
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const exchanging = useRef(false);
 
+  // Derived session for old components
+  const [session, setSession] = useState<AuthSession | null>(null);
+
+  // Update session whenever user (from Cognito) changes
+  useEffect(() => {
+    if (user) {
+      // Build an AuthSession from the Cognito user info
+      const newSession: AuthSession = {
+        token: localStorage.getItem('authTokens') ? JSON.parse(localStorage.getItem('authTokens')!).id_token : '',
+        role: user['custom:role'] || 'Employee',
+        teamId: user['custom:teamId'] || null,
+        user: {
+          email: user.email || '',
+          name: user.name || user.email || '',
+          sub: user.sub || '',
+        },
+        rememberDevice: true,
+      };
+      setSession(newSession);
+    } else {
+      setSession(null);
+    }
+  }, [user]);
+
+  // Token exchange (same as before)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');
     if (code && !exchanging.current) {
       exchangeCodeForTokens(code);
     } else if (!code) {
-      // No code in URL, try to load existing tokens
       const tokens = localStorage.getItem('authTokens');
       if (tokens) {
         try {
@@ -60,9 +105,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       const responseText = await response.text();
-      console.log('Token exchange response status:', response.status);
-      console.log('Token exchange response body:', responseText);
-
       if (!response.ok) {
         throw new Error(`Token exchange failed (${response.status}): ${responseText}`);
       }
@@ -71,7 +113,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         tokens = JSON.parse(responseText);
       } catch (e) {
-        throw new Error('Response is not valid JSON (likely HTML error page)');
+        throw new Error('Response is not valid JSON');
       }
 
       if (!tokens.id_token) {
@@ -81,7 +123,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       localStorage.setItem('authTokens', JSON.stringify(tokens));
       const decodedUser = decodeJwt(tokens.id_token);
       setUser(decodedUser);
-      // Remove the code from URL
       window.history.replaceState({}, document.title, window.location.pathname);
     } catch (error: any) {
       console.error('Exchange error:', error);
@@ -111,11 +152,40 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     window.location.href = logoutUrl;
   };
 
-  return (
-    <AuthContext.Provider value={{ user, loading, authError, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  // Compatibility functions (no‑op or localStorage based)
+  const applySession = useCallback((newSession: AuthSession) => {
+    // The old UI might call this; we ignore because we manage session via tokens.
+    console.warn('applySession called but ignored – using Cognito Hosted UI');
+  }, []);
+
+  const updateSessionUser = useCallback((updatedUser: AuthSession['user']) => {
+    if (session) {
+      const newSession = { ...session, user: { ...session.user, ...updatedUser } };
+      setSession(newSession);
+      // Optionally also update the user state if needed
+      if (user) {
+        setUser({ ...user, email: updatedUser.email, name: updatedUser.name });
+      }
+    }
+  }, [session, user]);
+
+  const isAuthenticated = Boolean(session?.token);
+  const isInitializing = loading;
+
+  const value: AuthContextValue = {
+    user,
+    loading,
+    authError,
+    login,
+    logout,
+    session,
+    isAuthenticated,
+    isInitializing,
+    applySession,
+    updateSessionUser,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {

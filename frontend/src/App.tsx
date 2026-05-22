@@ -1,15 +1,14 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { LoginPage } from '@/pages/LoginPage';
 import { Callback } from '@/pages/Callback';
-
+import { KanbanBoard } from '@/components/tasks/KanbanBoard';
+import { Toaster } from 'sonner';
 
 function AppContent() {
   const { user, loading } = useAuth();
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <div className="p-8 text-center">Loading...</div>;
   if (!user) return <LoginPage />;
-  // Replace with your main app page/component
-  return <div>Welcome, {user?.email || 'User'}!</div>;
+  return <KanbanBoard />;
 }
 
 export default function App() {
@@ -20,6 +19,7 @@ export default function App() {
           <Route path="/callback" element={<Callback />} />
           <Route path="/*" element={<AppContent />} />
         </Routes>
+        <Toaster position="top-right" />
       </AuthProvider>
     </BrowserRouter>
   );

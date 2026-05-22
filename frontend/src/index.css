@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #eef2f7;
+    --foreground: #0f172a;
+    --border: rgba(15, 23, 42, 0.08);
+    --primary: #3b82f6;
+    --primary-dark: #2563eb;
+    --primary-foreground: #ffffff;
+    --primary-hover: #60a5fa;
+    --secondary: #f7f9fc;
+    --secondary-foreground: #0f172a;
+    --secondary-muted: #f7f9fc;
+    --muted: #f1f5f9;
+    --muted-foreground: #64748b;
+    --accent: #3b82f6;
+    --accent-foreground: #ffffff;
+    --surface: #ffffff;
+    --surface-muted: #f7f9fc;
+    --surface-strong: #f1f5f9;
+    --sidebar-surface: #11253c;
+    --sidebar-text: #f8fafc;
+    --sidebar-muted: rgba(255, 255, 255, 0.7);
+    --sidebar-active: rgba(59, 130, 246, 0.16);
+    --sidebar-active-glow: #3b82f6;
+    --sidebar-highlight: rgba(255, 255, 255, 0.1);
+    --sidebar-panel: rgba(255, 255, 255, 0.05);
+    --navbar-surface: #eef2f7;
+    --navbar-icon: #64748b;
+    --navbar-icon-hover: #0f172a;
+    --modal-surface: #ffffff;
+    --input: #f1f5f9;
+    --button-secondary: #f7f9fc;
+    --button-secondary-hover: #eef2f7;
+    --placeholder: #94a3b8;
+    --avatar-fallback: #a19299;
+    --app-padding-x: 24px;
+    --app-padding-y: 32px;
+    --shadow-card: 0 8px 24px rgba(15, 23, 42, 0.08);
+    --shadow-card-hover: 0 10px 28px rgba(15, 23, 42, 0.12);
+  }
+
+  :root[data-theme='dark'] {
+    --background: #07111f;
+    --foreground: #f8fafc;
+    --border: rgba(255, 255, 255, 0.05);
+    --primary: #3b82f6;
+    --primary-dark: #2563eb;
+    --primary-foreground: #ffffff;
+    --primary-hover: #60a5fa;
+    --secondary: #22304a;
+    --secondary-foreground: #f8fafc;
+    --secondary-muted: #1b2a44;
+    --muted: #1b2a44;
+    --muted-foreground: #94a3b8;
+    --accent: #3b82f6;
+    --accent-foreground: #ffffff;
+    --surface: #111c31;
+    --surface-muted: #172554;
+    --surface-strong: #22304a;
+    --sidebar-surface: #081426;
+    --sidebar-text: #f8fafc;
+    --sidebar-muted: #94a3b8;
+    --sidebar-active: rgba(59, 130, 246, 0.16);
+    --sidebar-active-glow: #3b82f6;
+    --sidebar-highlight: rgba(255, 255, 255, 0.06);
+    --sidebar-panel: rgba(255, 255, 255, 0.04);
+    --navbar-surface: #0a1528;
+    --navbar-icon: #94a3b8;
+    --navbar-icon-hover: #f8fafc;
+    --modal-surface: #111c31;
+    --input: #0f172a;
+    --button-secondary: #22304a;
+    --button-secondary-hover: #334155;
+    --placeholder: #64748b;
+    --avatar-fallback: #475569;
+    --app-padding-x: 24px;
+    --app-padding-y: 32px;
+    --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.35);
+    --shadow-card-hover: 0 14px 40px rgba(0, 0, 0, 0.42);
+    --content-surface: #0b1628;
+    --text-disabled: #475569;
+  }
+
+  :root[data-density='compact'] {
+    --app-padding-x: 18px;
+    --app-padding-y: 24px;
+  }
+
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+    margin: 0;
+    min-height: 100vh;
+  }
+
+  :root[data-theme='dark'] main {
+    background-color: var(--content-surface);
+  }
+
+  :root[data-theme='dark'] aside nav a:hover {
+    background-color: rgba(255, 255, 255, 0.04) !important;
+  }
+}
+
+@layer utilities {
+  .auth-mesh {
+    background-color: #f6f7fb;
+    background-image:
+      radial-gradient(ellipse 80% 60% at 10% 20%, rgba(178, 200, 235, 0.55) 0%, transparent 55%),
+      radial-gradient(ellipse 70% 50% at 90% 10%, rgba(238, 198, 195, 0.28) 0%, transparent 50%),
+      radial-gradient(ellipse 60% 70% at 75% 85%, rgba(161, 146, 153, 0.22) 0%, transparent 55%),
+      radial-gradient(ellipse 50% 40% at 20% 80%, rgba(178, 200, 235, 0.35) 0%, transparent 50%);
+  }
+
+  .glass-card {
+    @apply rounded-2xl border border-border border-opacity-70 bg-[var(--surface)] shadow-card backdrop-blur-xl;
+  }
+
+  .btn-primary-gradient {
+    @apply bg-primary text-primary-foreground shadow-[0_8px_20px_rgba(59,130,246,0.25)];
+  }
+
+  .input-auth {
+    @apply h-11 w-full rounded-[14px] border border-border bg-[var(--input)] px-3 pl-10 text-sm text-foreground transition-all duration-200 placeholder:text-[var(--placeholder)] placeholder:opacity-80 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-30;
+  }
+
+  .label-auth {
+    @apply font-label text-[13px] font-semibold tracking-tight text-foreground;
+  }
+}
