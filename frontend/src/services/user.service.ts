@@ -9,7 +9,7 @@ export interface ProfileUpdatePayload {
 
 export async function getProfile(): Promise<AuthUser> {
   try {
-    const { data } = await api.get<AuthUser>('/api/users/profile');
+    const { data } = await api.get<AuthUser>('/api/users/me');
     return data;
   } catch (error) {
     throw mapProfileError(error);
@@ -18,7 +18,7 @@ export async function getProfile(): Promise<AuthUser> {
 
 export async function updateProfile(payload: ProfileUpdatePayload): Promise<AuthUser> {
   try {
-    const { data } = await api.put<AuthUser>('/api/users/profile', {
+    const { data } = await api.put<AuthUser>('/api/users/me', {
       name: payload.name.trim(),
       email: payload.email.trim()
     });

@@ -1,8 +1,8 @@
 import { Calendar, ClipboardList, MessageSquare, Paperclip, Trash2, ImagePlus } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
-import { getPresignedUrl } from '@/api/uploads';
+import { getPresignedUrl, uploadFileToS3 } from '@/api/uploads';
 import { updateTask } from '@/services/tasks.service';
-import { getComments, createComment } from '@/api/comments';
+import { getComments, createComment, type Comment } from '@/api/comments';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,13 +11,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Task, TaskStatus } from '@/types/tasks';
 import { toast } from '@/hooks/use-toast';
-
-interface Comment {
-  commentId: string;
-  text: string;
-  authorId: string;
-  createdAt: string;
-}
 
 const STATUSES: TaskStatus[] = ['To Do', 'In Progress', 'In Review', 'Done'];
 const PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'];
@@ -89,8 +82,8 @@ export function TaskDialog({
     if (open && task?.taskId) {
       setLoadingComments(true);
       getComments(task.taskId)
-        .then((res) => {
-          setComments(res.data || []);
+        .then((list) => {
+          setComments(list);
         })
         .catch(() => {
           toast({ variant: 'destructive', title: 'Failed to load comments' });
@@ -105,8 +98,8 @@ export function TaskDialog({
     if (!commentText.trim() || !task?.taskId) return;
     setSubmittingComment(true);
     try {
-      const res = await createComment({ taskId: task.taskId, text: commentText });
-      setComments((prev) => [...prev, res.data]);
+      const comment = await createComment(task.taskId, commentText);
+      setComments((prev) => [...prev, comment]);
       setCommentText('');
     } catch {
       toast({ variant: 'destructive', title: 'Failed to add comment' });
@@ -210,7 +203,7 @@ export function TaskDialog({
                   <div className="space-y-2 max-h-40 overflow-y-auto">
                     {comments.map((c) => (
                       <div key={c.commentId} className="rounded bg-[var(--surface)] p-2 border text-xs">
-                        <div className="font-semibold">{c.authorId}</div>
+                        <div className="font-semibold">{c.userId ?? 'User'}</div>
                         <div>{c.text}</div>
                         <div className="text-[10px] text-muted-foreground">{new Date(c.createdAt).toLocaleString()}</div>
                       </div>
@@ -275,15 +268,9 @@ export function TaskDialog({
                         setUploading(true);
                         try {
                           // 1. Get presigned URL
-                          const { data } = await getPresignedUrl(file.name, file.type);
-                          // 2. Upload to S3
-                          await fetch(data.url, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': file.type },
-                            body: file,
-                          });
-                          // 3. Update task with imageKey
-                          await updateTask(task.taskId, { imageKey: data.key });
+                          const presigned = await getPresignedUrl(file.name, file.type);
+                          await uploadFileToS3(presigned.uploadUrl, file);
+                          await updateTask(task.taskId, { imageKey: presigned.key });
                           toast({ title: 'Image uploaded! Please reopen the dialog to see the update.' });
                         } catch {
                           toast({ variant: 'destructive', title: 'Image upload failed' });

@@ -1,4 +1,1 @@
-import apiClient from './client';
-
-export const getComments = (taskId: string) => apiClient.get(`/comments?taskId=${taskId}`);
-export const createComment = (data: any) => apiClient.post('/comments', data);
+export { getComments, createComment, type Comment } from '@/services/comments.service';

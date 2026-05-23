@@ -20,7 +20,7 @@ export function normalizeRole(role: string): 'manager' | 'employee' | null {
 }
 
 export function getPostLoginPath(_role: string): string {
-  return '/dashboard';
+  return '/home';
 }
 
 export function getPostLoginRedirectPath(role: string): string {

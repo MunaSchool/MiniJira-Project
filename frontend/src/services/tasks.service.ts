@@ -51,6 +51,15 @@ export async function updateTask(taskId: string, payload: TaskUpdatePayload): Pr
   }
 }
 
+export async function updateTaskStatus(taskId: string, status: string): Promise<Task> {
+  try {
+    const { data } = await api.patch<Task>(`/api/tasks/${taskId}/status`, { status });
+    return data;
+  } catch (error) {
+    throw new Error(getErrorMessage(error, 'Unable to update task status.'));
+  }
+}
+
 export async function deleteTask(taskId: string): Promise<{ message: string; task: Task }> {
   try {
     const { data } = await api.delete<{ message: string; task: Task }>(`/api/tasks/${taskId}`);

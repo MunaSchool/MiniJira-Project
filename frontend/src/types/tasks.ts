@@ -8,8 +8,12 @@ export interface Task {
   priority?: string;
   deadline?: string;
   assigneeId: string;
+  assigneeName?: string;
   teamId: string;
+  teamName?: string;
   imageKey?: string;
+  imageUrl?: string | null;
+  resizedImageUrl?: string | null;
   commentCount?: number;
   createdAt?: string;
   updatedAt?: string;
@@ -36,6 +40,7 @@ export interface TaskCreatePayload {
   assigneeId: string;
   teamId: string;
   imageKey?: string;
+  status?: TaskStatus;
 }
 
 export interface TaskUpdatePayload {

@@ -53,19 +53,28 @@ async function authMiddleware(req, res, next) {
     const token = authHeader.split(' ')[1];
 
     const issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
-    const verifyOptions = {
-      algorithms: ['RS256'],
-      issuer
-    };
-    if (process.env.COGNITO_CLIENT_ID) {
-      verifyOptions.audience = process.env.COGNITO_CLIENT_ID;
-    }
+    const clientId = process.env.COGNITO_CLIENT_ID;
 
     const decoded = await new Promise((resolve, reject) => {
-      jwt.verify(token, getKey, verifyOptions, (err, payload) => {
-        if (err) return reject(err);
-        resolve(payload);
-      });
+      jwt.verify(
+        token,
+        getKey,
+        { algorithms: ['RS256'], issuer },
+        (err, payload) => {
+          if (err) return reject(err);
+          if (clientId) {
+            const aud = payload.aud;
+            const audienceOk =
+              aud === clientId ||
+              (Array.isArray(aud) && aud.includes(clientId)) ||
+              payload.client_id === clientId;
+            if (!audienceOk) {
+              return reject(new Error('JWT audience does not match app client'));
+            }
+          }
+          resolve(payload);
+        }
+      );
     });
 
     const sub = decoded.sub;

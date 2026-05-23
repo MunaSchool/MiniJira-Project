@@ -4,7 +4,8 @@ Team task board for Software Cloud Computing 2026. Managers assign work across t
 
 ## Stack
 
-- React and Vite in `client/` (frontend scaffold for now)
+- React and Vite in `frontend/` (main UI — Kanban dashboard, Cognito login)
+- `client/` is a minimal scaffold only
 - Node and Express in `mini-jira-backend/`
 - AWS: DynamoDB, S3, Cognito, SNS, SQS, Lambda, EventBridge
 
@@ -43,12 +44,21 @@ copy .env.example .env
 
 Fill `.env` with shared IAM keys, Cognito pool id, client id and DynamoDB table names. Do not commit `.env`.
 
-Optional frontend:
+Frontend:
 
 ```bash
-cd client
+cd frontend
+copy .env.example .env
 npm install
 npm run dev
+```
+
+Open http://localhost:5174
+
+Docker (backend + frontend):
+
+```bash
+docker compose up --build
 ```
 
 ## Run the API
