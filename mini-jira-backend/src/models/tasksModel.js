@@ -41,7 +41,7 @@ class TaskModel {
     
     // Use GSI for team queries (employees)
     if (teamId && role !== 'Manager') {
-      params.IndexName = 'teamId-index';
+      params.IndexName = 'GSI_TeamId';
       params.KeyConditionExpression = 'teamId = :teamId';
       params.ExpressionAttributeValues = { ':teamId': teamId };
       const result = await docClient.send(new QueryCommand(params));
@@ -50,7 +50,7 @@ class TaskModel {
     
     // Manager: use assignee GSI if specified
     if (assigneeId) {
-      params.IndexName = 'assigneeId-index';
+      params.IndexName = 'GSI_AssigneeId';
       params.KeyConditionExpression = 'assigneeId = :assigneeId';
       params.ExpressionAttributeValues = { ':assigneeId': assigneeId };
       const result = await docClient.send(new QueryCommand(params));
@@ -156,7 +156,7 @@ class TaskModel {
   static async findByTeam(teamId, { status, priority, assigneeId, limit = 50 } = {}) {
     const params = {
       TableName: TASKS_TABLE,
-      IndexName: 'teamId-index',
+      IndexName: 'GSI_TeamId',
       KeyConditionExpression: 'teamId = :teamId',
       ExpressionAttributeValues: {
         ':teamId': teamId

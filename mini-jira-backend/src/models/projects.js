@@ -46,7 +46,7 @@ class ProjectModel {
   static async findByTeamId(teamId) {
     const params = {
       TableName: PROJ_TABLE,
-      IndexName: 'teamId-index',
+      IndexName: 'GSI_TeamId',
       KeyConditionExpression: 'teamId = :teamId',
       ExpressionAttributeValues: {
         ':teamId': teamId

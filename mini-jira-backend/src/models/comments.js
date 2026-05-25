@@ -33,7 +33,7 @@ class CommentModel {
     static async findByTaskId(taskId) {
       const queryParams = {
         TableName: COMMENTS_TABLE,
-        IndexName: 'taskId-index',
+        IndexName: 'GSI_TeamId',
         KeyConditionExpression: 'taskId = :taskId',
         ExpressionAttributeValues: {
           ':taskId': taskId
