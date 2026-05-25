@@ -152,6 +152,35 @@ class TaskModel {
       console.error('Status audit write skipped:', error);
     }
   }
+
+  static async findByTeam(teamId, { status, priority, assigneeId, limit = 50 } = {}) {
+    const params = {
+      TableName: TASKS_TABLE,
+      IndexName: 'teamId-index',
+      KeyConditionExpression: 'teamId = :teamId',
+      ExpressionAttributeValues: {
+        ':teamId': teamId
+      },
+      Limit: parseInt(limit)
+    };
+
+    const result = await docClient.send(new QueryCommand(params));
+    let items = result.Items || [];
+
+    if (status) {
+      items = items.filter(task => task.status === status);
+    }
+
+    if (priority) {
+      items = items.filter(task => task.priority === priority);
+    }
+
+    if (assigneeId) {
+      items = items.filter(task => task.assigneeId === assigneeId);
+    }
+
+    return items;
+  }
 }
 
 module.exports = TaskModel;
