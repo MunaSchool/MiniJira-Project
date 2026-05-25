@@ -31,32 +31,16 @@ class CommentModel {
     }
 
     static async findByTaskId(taskId) {
-      const queryParams = {
+      const scanParams = {
         TableName: COMMENTS_TABLE,
-        IndexName: 'GSI_TeamId',
-        KeyConditionExpression: 'taskId = :taskId',
+        FilterExpression: 'taskId = :taskId',
         ExpressionAttributeValues: {
           ':taskId': taskId
         }
       };
 
-      try {
-        const result = await docClient.send(new QueryCommand(queryParams));
-        return result.Items || [];
-      } catch (err) {
-        if (err.name === 'ValidationException' && err.message.includes('taskId-index')) {
-          const scanParams = {
-            TableName: COMMENTS_TABLE,
-            FilterExpression: 'taskId = :taskId',
-            ExpressionAttributeValues: {
-              ':taskId': taskId
-            }
-          };
-          const scanResult = await docClient.send(new ScanCommand(scanParams));
-          return scanResult.Items || [];
-        }
-        throw err;
-      }
+      const result = await docClient.send(new ScanCommand(scanParams));
+      return result.Items || [];
     }
   }
 
