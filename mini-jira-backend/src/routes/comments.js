@@ -4,6 +4,6 @@ const commentController = require('../controllers/commentController');
 const { authMiddleware, requireRole } = require('../middleware/auth');
 
 router.get('/:taskId', authMiddleware, commentController.getCommentsByTaskId);
-router.post('/:taskId', authMiddleware, requireRole(['Manager']), commentController.createComment);
+router.post('/:taskId', authMiddleware, commentController.createComment);
 
 module.exports = router;
