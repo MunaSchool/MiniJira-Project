@@ -9,6 +9,11 @@ function isCognitoConfigured(): boolean {
 }
 
 export async function login(credentials: LoginCredentials): Promise<LoginResponse> {
+  if (isCognitoConfigured()) {
+    const { loginWithCognito } = await import('./cognito-auth');
+    return loginWithCognito(credentials);
+  }
+
   try {
     const { data } = await api.post<LoginResponse>('/auth/login', {
       email: credentials.email.trim(),
@@ -43,6 +48,11 @@ export async function login(credentials: LoginCredentials): Promise<LoginRespons
 }
 
 export async function register(payload: SignupPayload): Promise<SignupResponse> {
+  if (isCognitoConfigured()) {
+    const { registerWithCognito } = await import('./cognito-auth');
+    return registerWithCognito(payload);
+  }
+
   try {
     const { data } = await api.post<SignupResponse>('/auth/register', {
       name: payload.name.trim(),

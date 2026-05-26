@@ -1,4 +1,5 @@
 import { useDroppable } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TaskCard } from '@/components/tasks/TaskCard';
@@ -29,20 +30,22 @@ export function TaskColumn({ status, tasks, isLoading, onSelect }: TaskColumnPro
         </Badge>
       </div>
 
-      <div className="space-y-4">
-        {isLoading ? (
-          <>
-            <Skeleton className="h-28" />
-            <Skeleton className="h-24" />
-          </>
-        ) : tasks.length ? (
-          tasks.map((task) => <TaskCard key={task.taskId} task={task} onSelect={onSelect} />)
-        ) : (
-          <div className="rounded-xl border border-dashed border-border/50 bg-[var(--surface)] p-4 text-xs text-muted-foreground">
-            No tasks here yet.
-          </div>
-        )}
-      </div>
+      <SortableContext items={tasks.map((task) => task.taskId)} strategy={verticalListSortingStrategy}>
+        <div className="space-y-4">
+          {isLoading ? (
+            <>
+              <Skeleton className="h-28" />
+              <Skeleton className="h-24" />
+            </>
+          ) : tasks.length ? (
+            tasks.map((task) => <TaskCard key={task.taskId} task={task} onSelect={onSelect} />)
+          ) : (
+            <div className="rounded-xl border border-dashed border-border/50 bg-[var(--surface)] p-4 text-xs text-muted-foreground">
+              No tasks here yet.
+            </div>
+          )}
+        </div>
+      </SortableContext>
     </div>
   );
 }

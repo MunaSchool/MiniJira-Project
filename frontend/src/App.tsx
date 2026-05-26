@@ -1,41 +1,45 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { LoginPage } from '@/pages/LoginPage';
 import { Callback } from '@/pages/Callback';
-import Dashboard from '@/pages/Dashboard';
-import HomeHub from '@/pages/HomeHub';
-import ApiPage from '@/pages/ApiPage';
-import TasksPage from '@/pages/TasksPage';
-import ProjectsPage from '@/pages/ProjectsPage';
-import SettingsPage from '@/pages/SettingsPage';
+import { DashboardPage } from '@/pages/DashboardPage';
+import { TasksPage } from '@/pages/TasksPage';
+import { ProjectsPage } from '@/pages/ProjectsPage';
+import { SettingsPage } from '@/pages/SettingsPage';
+import { ProfilePage } from '@/pages/ProfilePage';
+import { TeamsPage } from '@/pages/TeamsPage';
+import { HelpPage } from '@/pages/HelpPage';
+import { WelcomePage } from '@/pages/WelcomePage';
+import { SignupPage } from '@/pages/SignupPage';
+import { MyTasksPage } from '@/pages/MyTasksPage';
+import { PermissionsPage } from '@/pages/PermissionsPage';
+import { PrivacyPage } from '@/pages/PrivacyPage';
+import { AboutPage } from '@/pages/AboutPage';
 import { Toaster } from 'sonner';
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { loading, isAuthenticated } = useAuth();
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#eef2f7] text-slate-600">
-        Loading…
-      </div>
-    );
-  }
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-  return children;
-}
+function AppContent() {
+  const { user, loading } = useAuth();
 
-function AppRoutes() {
+  if (loading) return <div className="p-8 text-center">Loading...</div>;
+  if (!user) return <LoginPage />;
+
   return (
     <Routes>
-      <Route path="/callback" element={<Callback />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/home" element={<ProtectedRoute><HomeHub /></ProtectedRoute>} />
-      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="/api" element={<ProtectedRoute><ApiPage /></ProtectedRoute>} />
-      <Route path="/tasks" element={<ProtectedRoute><TasksPage /></ProtectedRoute>} />
-      <Route path="/projects" element={<ProtectedRoute><ProjectsPage /></ProtectedRoute>} />
-      <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-      <Route path="/" element={<Navigate to="/home" replace />} />
-      <Route path="*" element={<Navigate to="/home" replace />} />
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/dashboard" element={<DashboardPage />} />
+      <Route path="/tasks" element={<TasksPage />} />
+      <Route path="/my-tasks" element={<MyTasksPage />} />
+      <Route path="/projects" element={<ProjectsPage />} />
+      <Route path="/teams" element={<TeamsPage />} />
+      <Route path="/profile" element={<ProfilePage />} />
+      <Route path="/settings" element={<SettingsPage />} />
+      <Route path="/permissions" element={<PermissionsPage />} />
+      <Route path="/help" element={<HelpPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/about" element={<AboutPage />} />
+      <Route path="/signup" element={<SignupPage />} />
+      <Route path="/welcome" element={<WelcomePage />} />
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 }
@@ -44,7 +48,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <Routes>
+          <Route path="/callback" element={<Callback />} />
+          <Route path="/*" element={<AppContent />} />
+        </Routes>
         <Toaster position="top-right" />
       </AuthProvider>
     </BrowserRouter>

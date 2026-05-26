@@ -63,7 +63,7 @@ export function TaskCard({ task, onSelect }: TaskCardProps) {
       </div>
       <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
         <span>Assignee</span>
-        <span className="font-semibold text-foreground">{task.assigneeId || '—'}</span>
+        <span className="font-semibold text-foreground">{task.assigneeName || task.assigneeEmail || task.assigneeId || '-'}</span>
       </div>
     </motion.div>
   );

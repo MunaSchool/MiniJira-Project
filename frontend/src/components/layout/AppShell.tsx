@@ -1,4 +1,3 @@
-import type { LucideIcon } from 'lucide-react';
 import { Bell, ChevronDown, LayoutDashboard, LifeBuoy, LogOut, PanelLeft, Settings, User, FolderKanban, CheckCircle2, Users } from 'lucide-react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
@@ -17,18 +16,18 @@ import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { normalizeRole } from '@/lib/auth-utils';
 
+type SidebarItem = {
+  label: string;
+  path: string;
+  icon: typeof LayoutDashboard;
+  role?: 'manager' | 'employee';
+};
+
 interface AppShellProps {
   title: string;
   subtitle?: string;
   children: React.ReactNode;
   actions?: React.ReactNode;
-}
-
-interface SidebarItem {
-  label: string;
-  path: string;
-  icon: LucideIcon;
-  role?: string;
 }
 
 const sidebarBase: SidebarItem[] = [

@@ -1,35 +1,13 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Eye, EyeOff, LayoutDashboard, Loader2, Lock, Mail } from 'lucide-react';
+import { ArrowRight, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { useLoginMutation } from '@/hooks/useAuth';
-import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/context/AuthContext';
 import { AuthFooter } from './AuthFooter';
 import { SocialLogin } from './SocialLogin';
 
 export function LoginCard() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [rememberDevice, setRememberDevice] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const loginMutation = useLoginMutation();
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim() || !password) {
-      toast({
-        variant: 'destructive',
-        title: 'Invalid credentials',
-        description: 'Email and password are required.'
-      });
-      return;
-    }
-    loginMutation.mutate({ credentials: { email: email.trim(), password }, rememberDevice });
-  };
+  const { login } = useAuth();
 
   return (
     <>
@@ -42,87 +20,15 @@ export function LoginCard() {
           <p className="mt-1.5 text-sm text-muted-foreground">Log in to your workspace to continue.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="email">Email Address</Label>
-            <div className="relative">
-              <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                placeholder="name@company.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={loginMutation.isPending}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
-              <button
-                type="button"
-                className="text-xs font-medium text-primary hover:text-primary-dark"
-                onClick={() =>
-                  toast({ title: 'Forgot password', description: 'Reset via AWS Cognito when enabled.' })
-                }
-              >
-                Forgot password?
-              </button>
-            </div>
-            <div className="relative">
-              <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                autoComplete="current-password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={loginMutation.isPending}
-                className="pr-10"
-                required
-              />
-              <button
-                type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition hover:text-foreground"
-                onClick={() => setShowPassword((value) => !value)}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="remember"
-              checked={rememberDevice}
-              onCheckedChange={(c) => setRememberDevice(c === true)}
-              disabled={loginMutation.isPending}
-            />
-            <label htmlFor="remember" className="cursor-pointer text-sm text-muted-foreground">
-              Remember this device
-            </label>
-          </div>
-
-          <Button type="submit" className="mt-2 w-full" disabled={loginMutation.isPending}>
-            {loginMutation.isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Signing in...
-              </>
-            ) : (
-              <>
-                Sign in
-                <ArrowRight className="h-4 w-4" />
-              </>
-            )}
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            You will be redirected to AWS Cognito Hosted UI, then returned to this app after sign-in.
+          </p>
+          <Button type="button" className="w-full" onClick={() => login()}>
+            <ArrowRight className="h-4 w-4" />
+            Continue with Cognito
           </Button>
-        </form>
+        </div>
 
         <div className="relative my-6">
           <Separator />

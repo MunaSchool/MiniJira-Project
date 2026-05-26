@@ -1,19 +1,30 @@
-import { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react';
-import type { AuthSession, AuthUser, LoginCredentials } from '@/types/auth';
-import { login as loginApi } from '@/services/auth.service';
-import { getProfile } from '@/services/user.service';
-import { getPostLoginRedirectPath } from '@/lib/auth-utils';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import axios from 'axios';
 import { decodeJwtPayload } from '@/lib/jwt-decode';
-import { clearIdToken, getIdToken, persistIdToken } from '@/lib/tokens';
+import { api } from '@/services/api';
+import {
+  buildCognitoLoginUrl,
+  buildCognitoLogoutUrl,
+  clearSession,
+  clearPkceVerifier,
+  generatePkcePair,
+  getCognitoClientId,
+  getCognitoDomain,
+  getCognitoRedirectUri,
+  getPkceVerifier,
+  loadSession,
+  setPkceVerifier,
+  persistSession
+} from '@/lib/auth-utils';
+import type { AuthSession, AuthUser } from '@/types/auth';
 
 export interface AuthContextValue {
-  user: AuthUser | null;
-  profile: AuthUser | null;
+  user: AuthSession['user'] | null;
   loading: boolean;
   authError: string | null;
-  login: (credentials?: LoginCredentials, rememberDevice?: boolean) => Promise<AuthSession | void>;
+  login: () => void;
+  completeLogin: (code: string) => Promise<AuthSession>;
   logout: () => void;
-  refreshProfile: () => Promise<void>;
   session: AuthSession | null;
   isAuthenticated: boolean;
   isInitializing: boolean;
@@ -23,238 +34,141 @@ export interface AuthContextValue {
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-function isTokenExpired(token: string): boolean {
-  try {
-    const claims = decodeJwtPayload(token);
-    const exp = claims.exp as number | undefined;
-    if (!exp) return false;
-    return Date.now() >= exp * 1000;
-  } catch {
-    return true;
-  }
-}
-
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [profile, setProfile] = useState<AuthUser | null>(null);
+  const [user, setUser] = useState<AuthSession['user'] | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
-  const exchanging = useRef(false);
-
-  const refreshProfile = useCallback(async () => {
-    const token = getIdToken();
-    if (!token) return;
-    if (isTokenExpired(token)) {
-      clearIdToken();
-      setUser(null);
-      setProfile(null);
-      setAuthError('Your session expired. Please sign in again.');
-      return;
-    }
-    try {
-      const data = await getProfile();
-      setProfile(data);
-      setUser(data);
-      setAuthError(null);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Profile load failed';
-      console.error('Profile load failed', error);
-      setAuthError(message);
-      if (message.includes('expired') || message.includes('Invalid or expired token')) {
-        clearIdToken();
-        setUser(null);
-        setProfile(null);
-      }
-    }
-  }, []);
-
   const [session, setSession] = useState<AuthSession | null>(null);
 
   useEffect(() => {
-    const token = getIdToken();
-    if (user && token) {
-      setSession({
-        token,
-        role: user.role || 'Employee',
-        teamId: user.teamId ?? null,
-        user: {
-          email: user.email || '',
-          name: user.name || user.email || '',
-          sub: user.userId || ''
-        },
-        rememberDevice: true
-      });
-    } else {
-      setSession(null);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get('code');
-    const onCallback = window.location.pathname === '/callback';
-
-    if (code && onCallback && !exchanging.current) {
-      void exchangeCodeForTokens(code);
-      return;
-    }
-
-    if (onCallback && !code) {
-      setLoading(false);
-      return;
-    }
-
-    const token = getIdToken();
-    if (token && isTokenExpired(token)) {
-      clearIdToken();
-      setLoading(false);
-      return;
-    }
-    if (token) {
-      refreshProfile().finally(() => setLoading(false));
-      return;
+    const storedSession = loadSession();
+    if (storedSession) {
+      setSession(storedSession);
+      setUser(storedSession.user);
     }
     setLoading(false);
-  }, [refreshProfile]);
+  }, []);
 
-  const exchangeCodeForTokens = async (code: string) => {
-    if (exchanging.current) return;
-    exchanging.current = true;
-    setLoading(true);
+  const login = useCallback(async () => {
+    const { verifier, challenge } = await generatePkcePair();
+    setPkceVerifier(verifier);
+    const loginUrl = new URL(buildCognitoLoginUrl());
+    loginUrl.searchParams.set('code_challenge_method', 'S256');
+    loginUrl.searchParams.set('code_challenge', challenge);
+    window.location.href = loginUrl.toString();
+  }, []);
+
+  const completeLogin = useCallback(async (code: string) => {
     setAuthError(null);
-
-    const tokenUrl = `${import.meta.env.VITE_COGNITO_DOMAIN}/oauth2/token`;
-    const body = new URLSearchParams({
-      grant_type: 'authorization_code',
-      client_id: import.meta.env.VITE_CLIENT_ID,
-      redirect_uri: import.meta.env.VITE_REDIRECT_URI,
-      code
-    });
-
-    const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+    setLoading(true);
 
     try {
-      const response = await fetch(tokenUrl, {
+      const tokenEndpoint = new URL('/oauth2/token', getCognitoDomain()).toString();
+      const body = new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: getCognitoClientId(),
+        redirect_uri: getCognitoRedirectUri(),
+        code,
+        code_verifier: getPkceVerifier() || ''
+      });
+
+      const response = await fetch(tokenEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: body.toString(),
-        signal: controller.signal
+        body: body.toString()
       });
 
       const responseText = await response.text();
       if (!response.ok) {
-        throw new Error(`Token exchange failed (${response.status}): ${responseText}`);
+        throw new Error(`Cognito token exchange failed (${response.status}): ${responseText}`);
       }
 
       const tokens = JSON.parse(responseText) as { id_token?: string };
       if (!tokens.id_token) {
-        throw new Error('No id_token in response');
+        throw new Error('Cognito did not return an ID token.');
       }
 
-      persistIdToken(tokens.id_token);
-      window.history.replaceState({}, document.title, '/callback');
-      await refreshProfile();
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error && error.name === 'AbortError'
-          ? 'Sign-in timed out. Check redirect URL (port 5174) and network.'
-          : error instanceof Error
-            ? error.message
-            : 'Sign-in failed';
-      console.error('Exchange error:', error);
+      const claims = decodeJwtPayload(tokens.id_token);
+      let profile: AuthUser = {
+        userId: claims.sub,
+        email: claims.email,
+        name: claims.name,
+        role: claims['custom:role'] as string | undefined,
+        teamId: claims['custom:teamId'] as string | null | undefined
+      };
+
+      try {
+        const { data } = await api.get<AuthUser>('/api/users/profile', {
+          headers: { Authorization: `Bearer ${tokens.id_token}` }
+        });
+        profile = data;
+      } catch (error) {
+        if (!shouldSkipProfileError(error)) {
+          throw error;
+        }
+      }
+
+      const nextSession: AuthSession = {
+        token: tokens.id_token,
+        role: String(profile.role || claims['custom:role'] || 'Employee'),
+        teamId: profile.teamId ?? (claims['custom:teamId'] as string | null | undefined) ?? null,
+        user: {
+          ...profile,
+          userId: profile.userId || claims.sub,
+          email: profile.email || claims.email,
+          name: profile.name || claims.name || profile.email || claims.email || ''
+        },
+        rememberDevice: true
+      };
+
+      persistSession(nextSession);
+      clearPkceVerifier();
+      setSession(nextSession);
+      setUser(nextSession.user);
+      return nextSession;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Authentication failed';
       setAuthError(message);
-      clearIdToken();
+      throw error;
     } finally {
-      window.clearTimeout(timeoutId);
       setLoading(false);
-      exchanging.current = false;
     }
-  };
-
-  const login = async (credentials?: LoginCredentials, rememberDevice = false) => {
-    if (!credentials) {
-      const loginUrl =
-        `${import.meta.env.VITE_COGNITO_DOMAIN}/login?` +
-        `client_id=${import.meta.env.VITE_CLIENT_ID}&` +
-        `response_type=code&` +
-        `redirect_uri=${encodeURIComponent(import.meta.env.VITE_REDIRECT_URI)}&` +
-        `scope=email+openid+profile`;
-      window.location.href = loginUrl;
-      return;
-    }
-
-    const response = await loginApi(credentials);
-    const session: AuthSession = {
-      token: response.token,
-      role: response.role,
-      teamId: response.teamId ?? null,
-      user: {
-        email: response.user.email ?? '',
-        name: response.user.name ?? response.user.email ?? '',
-        sub: (response.user as { sub?: string }).sub ?? response.user.userId ?? ''
-      },
-      rememberDevice
-    };
-
-    persistIdToken(session.token, rememberDevice);
-    setSession(session);
-    const profileData = await getProfile().catch(() => response.user);
-    setProfile(profileData);
-    setUser(profileData);
-    setAuthError(null);
-    return session;
-  };
+  }, []);
 
   const logout = () => {
-    const logoutUrl =
-      `${import.meta.env.VITE_COGNITO_DOMAIN}/logout?` +
-      `client_id=${import.meta.env.VITE_CLIENT_ID}&` +
-      `logout_uri=${encodeURIComponent(import.meta.env.VITE_LOGOUT_URI)}`;
-    clearIdToken();
+    clearSession();
+    clearPkceVerifier();
     setUser(null);
-    setProfile(null);
-    window.location.href = logoutUrl;
+    setSession(null);
+    window.location.href = buildCognitoLogoutUrl();
   };
 
   const applySession = useCallback((newSession: AuthSession) => {
+    persistSession(newSession);
     setSession(newSession);
-    persistIdToken(newSession.token, newSession.rememberDevice);
-    setUser({
-      userId: String(newSession.user.sub ?? newSession.user.userId ?? ''),
-      email: newSession.user.email,
-      name: newSession.user.name,
-      role: newSession.role,
-      teamId: newSession.teamId
-    });
+    setUser(newSession.user);
   }, []);
 
-  const updateSessionUser = useCallback(
-    (updatedUser: AuthSession['user']) => {
-      if (session) {
-        const newSession = { ...session, user: { ...session.user, ...updatedUser } };
-        setSession(newSession);
-        if (user) {
-          setUser({ ...user, email: updatedUser.email, name: updatedUser.name });
-        }
-      }
-    },
-    [session, user]
-  );
+  const updateSessionUser = useCallback((updatedUser: AuthSession['user']) => {
+    if (!session) {
+      return;
+    }
 
-  const token = getIdToken();
-  const isAuthenticated = Boolean(user && token && !isTokenExpired(token));
+    const nextSession = { ...session, user: { ...session.user, ...updatedUser } };
+    persistSession(nextSession);
+    setSession(nextSession);
+    setUser(nextSession.user);
+  }, [session]);
 
   const value: AuthContextValue = {
     user,
-    profile,
     loading,
     authError,
     login,
+    completeLogin,
     logout,
-    refreshProfile,
     session,
-    isAuthenticated,
+    isAuthenticated: Boolean(session?.token),
     isInitializing: loading,
     applySession,
     updateSessionUser
@@ -268,3 +182,17 @@ export const useAuth = () => {
   if (!context) throw new Error('useAuth must be used within AuthProvider');
   return context;
 };
+
+function shouldSkipProfileError(error: unknown): boolean {
+  if (import.meta.env.VITE_AUTH_SKIP_PROFILE !== 'true') {
+    return false;
+  }
+
+  if (!axios.isAxiosError(error)) {
+    return false;
+  }
+
+  const status = error.response?.status;
+  const message = (error.response?.data as { error?: string })?.error || error.message;
+  return status === 401 || message.includes('User not found') || message.includes('Invalid or expired token');
+}

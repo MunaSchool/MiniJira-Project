@@ -1,42 +1,51 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { getPostLoginRedirectPath } from '@/lib/auth-utils';
 
 export const Callback = () => {
-  const { user, loading, authError } = useAuth();
+  const { completeLogin, loading, authError, session } = useAuth();
   const navigate = useNavigate();
-  const timedOut = useRef(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const hasStarted = useRef(false);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      if (loading && !user && !authError) {
-        timedOut.current = true;
-        navigate('/login?error=auth_failed', { replace: true });
-      }
-    }, 20000);
-    return () => window.clearTimeout(timer);
-  }, [loading, user, authError, navigate]);
-
-  useEffect(() => {
-    if (loading || timedOut.current) return;
-    if (user) {
-      navigate(getPostLoginRedirectPath(''), { replace: true });
+    if (hasStarted.current) {
       return;
     }
-    if (authError) {
-      navigate('/login?error=auth_failed', { replace: true });
+
+    const code = new URLSearchParams(window.location.search).get('code');
+    if (!code) {
+      setErrorMessage('Missing authorization code from Cognito.');
+      return;
     }
-  }, [user, loading, authError, navigate]);
+
+    hasStarted.current = true;
+
+    completeLogin(code)
+      .then((nextSession) => {
+        window.history.replaceState({}, document.title, window.location.pathname);
+        navigate(getPostLoginRedirectPath(nextSession.role), { replace: true });
+      })
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : 'Auth callback failed';
+        setErrorMessage(message);
+        navigate('/login', { replace: true, state: { error: message } });
+      });
+  }, [completeLogin, navigate]);
+
+  useEffect(() => {
+    if (!loading && session) {
+      navigate(getPostLoginRedirectPath(session.role), { replace: true });
+    }
+  }, [loading, navigate, session]);
 
   return (
-    <div className="flex h-screen items-center justify-center bg-[#eef2f7]">
+    <div className="flex justify-center items-center h-screen">
       <div className="text-center">
-        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-slate-900" />
-        <p className="mt-2 text-slate-700">Completing sign in…</p>
-        {authError ? (
-          <p className="mt-2 max-w-md text-sm text-red-600">{authError}</p>
-        ) : null}
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+        <p className="mt-2">Completing sign in...</p>
+        {authError || errorMessage ? <p className="mt-2 text-sm text-red-600">{authError || errorMessage}</p> : null}
       </div>
     </div>
   );

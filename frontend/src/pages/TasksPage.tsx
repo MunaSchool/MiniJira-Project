@@ -1,6 +1,5 @@
-import MainDashboard from './MainDashboard';
+import { KanbanBoard } from '@/components/tasks/KanbanBoard';
 
-/** Kanban dashboard (same as home). */
-export default function TasksPage() {
-  return <MainDashboard />;
+export function TasksPage() {
+  return <KanbanBoard />;
 }

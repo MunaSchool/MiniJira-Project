@@ -113,7 +113,7 @@ export async function loginWithCognito(credentials: LoginCredentials): Promise<L
   const email = credentials.email.trim();
 
   try {
-    const { data: profile } = await api.get<LoginResponse['user']>('/api/users/me', {
+    const { data: profile } = await api.get<LoginResponse['user']>('/api/users/profile', {
       headers: { Authorization: `Bearer ${idToken}` }
     });
 

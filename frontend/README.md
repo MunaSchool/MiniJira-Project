@@ -1,43 +1,39 @@
-# Mini Jira — Frontend
+# Mini Jira Frontend
 
-React + Vite dashboard (Kanban board, task creation, projects, comments, S3 uploads). Uses Cognito Hosted UI and calls the Express API under `/api/*`.
+Standalone React app (separate from `client/` scaffold).
 
-## Quick start (local)
+## Stack
 
-1. Copy env: `copy .env.example .env` and fill Cognito + API values.
-2. Start backend: `cd ../mini-jira-backend && npm run dev`
-3. Install and run:
+- React 18 + TypeScript
+- Vite
+- Tailwind CSS + shadcn/ui
+- React Router, React Query, Axios
+- AWS Cognito (client SDK fallback)
+
+## Run
 
 ```bash
+cd frontend
 npm install
+copy .env.example .env
 npm run dev
 ```
 
-Open http://localhost:5174 — sign in with Cognito, then use the dashboard.
+Open **http://localhost:5174/login**
 
-## Docker (from repo root)
+Start the API first:
 
 ```bash
-docker compose up --build
+cd mini-jira-backend
+npm run dev
 ```
 
-- Frontend: http://localhost:5174
-- Backend health: http://localhost:3000/health
+Copy Cognito values from `mini-jira-backend/.env` into `frontend/.env`.
 
-Ensure `mini-jira-backend/.env` has valid AWS credentials and Cognito settings.
+## Auth
 
-## API wiring
+1. `POST /auth/login` when the backend exposes it
+2. Otherwise Cognito login + `GET /api/users/profile`
+3. Manager → `/dashboard`, Employee → `/my-tasks`
 
-All requests send `Authorization: Bearer <id_token>`. Services live in `src/services/`:
-
-| Endpoint | Service |
-|----------|---------|
-| `GET /health` | `health.service.ts` |
-| `GET/PUT /api/users/me` | `user.service.ts` |
-| `GET /api/users?teamId=` | `users.service.ts` |
-| Tasks CRUD + status | `tasks.service.ts` |
-| Projects CRUD | `projects.service.ts` |
-| Comments | `comments.service.ts` |
-| Uploads presigned + delete | `uploads.service.ts` |
-
-Set `VITE_API_BASE_URL` to your CloudFront origin host (e.g. `https://dxxxx.cloudfront.net`) in production; paths already include `/api/...`.
+Backend is not modified; Vite proxies `/api`, `/auth`, `/health` to port 3000.
